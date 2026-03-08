@@ -1,38 +1,21 @@
-import { type User, type InsertUser } from "@shared/schema";
-import { randomUUID } from "crypto";
-
-// modify the interface with any CRUD methods
-// you might need
+import { db } from "./db";
+import { qnas, type InsertQna, type QnaResponse } from "@shared/schema";
+import { eq, desc } from "drizzle-orm";
 
 export interface IStorage {
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  getQnas(): Promise<QnaResponse[]>;
+  createQna(qna: InsertQna): Promise<QnaResponse>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-
-  constructor() {
-    this.users = new Map();
+export class DatabaseStorage implements IStorage {
+  async getQnas(): Promise<QnaResponse[]> {
+    return await db.select().from(qnas).orderBy(desc(qnas.createdAt));
   }
 
-  async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
-  }
-
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
+  async createQna(qna: InsertQna): Promise<QnaResponse> {
+    const [newQna] = await db.insert(qnas).values(qna).returning();
+    return newQna;
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
