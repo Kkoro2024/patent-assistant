@@ -36,7 +36,7 @@ export function useAskQuestion() {
       const res = await fetch(api.qna.ask.path, {
         method: api.qna.ask.method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(validatedInput),
+        body: JSON.stringify({ ...validatedInput, ...(input as any) }),
         credentials: "include",
       });
 
