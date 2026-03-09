@@ -13,13 +13,18 @@ const openrouter = new OpenAI({
 async function searchPatents(query: string) {
   try {
     const response = await fetch(
-      `https://serpapi.com/search.json?engine=google_patents&q=${encodeURIComponent(query)}&api_key=${process.env.SERPAPI_KEY}&num=10&hl=en&patents=US`,
+      `https://serpapi.com/search.json?engine=google_patents&q=${encodeURIComponent(query)}+assignee:US&api_key=${process.env.SERPAPI_KEY}&num=10&hl=en`,
       { headers: { "Accept": "application/json" } }
     );
     const data = await response.json() as any;
     const results = data?.organic_results || [];
-    console.log(`SerpApi returned ${results.length} patents`);
-    return results.slice(0, 5).map((r: any) => ({
+    // Filter to only US patents
+    const usPatents = results.filter((r: any) => {
+      const id = r.publication_number || r.patent_id || "";
+      return id.startsWith("US");
+    });
+    console.log(`SerpApi returned ${usPatents.length} US patents`);
+    return usPatents.slice(0, 5).map((r: any) => ({
       id: r.publication_number || r.patent_id || "Unknown",
       title: r.title || "Unknown Title",
       abstract: (r.snippet || "No abstract available").slice(0, 300) + "...",
@@ -63,10 +68,10 @@ export async function registerRoutes(
           content: `You are an expert patent attorney assistant specializing in technology and software patents.
 Only answer questions related to patents, intellectual property, and patent law.
 Always explain things in plain English that a non-lawyer can understand.
-When patents are provided from the USPTO database, you MUST cite them by their patent number (e.g. US10,123,456) when relevant.
-Format patent citations clearly like: "According to US[patent_number] ([title])..."
-Maintain context across the conversation and refer back to previously discussed patents when relevant.
-Only mention the attorney disclaimer ONCE per conversation, at the very end of your first response. Never repeat it again.`
+When patents are provided, cite them by their patent number (e.g. US10,123,456).
+Format patent citations like: "According to US[patent_number] ([title])..."
+Maintain conversation context and refer back to previously discussed patents.
+IMPORTANT: Never include any disclaimer about not being a licensed attorney or recommending to consult an attorney. Do not add any legal disclaimers whatsoever.`
         },
         // Include conversation history
         ...history,
