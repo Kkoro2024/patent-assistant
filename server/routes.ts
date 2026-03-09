@@ -19,14 +19,14 @@ async function searchPatents(query: string) {
     );
     const data = await response.json() as any;
     const results = data?.organic_results || [];
-    console.log(`SerpApi patent search returned ${results.length} results`);
-    return results.map((r: any) => ({
-      id: r.patent_id || r.publication_number || "Unknown",
+    console.log(`SerpApi returned ${results.length} patents`);
+    return results.slice(0, 5).map((r: any) => ({
+      id: r.publication_number || r.patent_id || "Unknown",
       title: r.title || "Unknown Title",
       abstract: (r.snippet || "No abstract available").slice(0, 300) + "...",
       inventor: r.inventor || "Unknown",
       assignee: r.assignee || "Individual inventor",
-      date: r.filing_date || r.publication_date || "Unknown date",
+      date: r.grant_date || r.publication_date || "Unknown date",
     }));
   } catch (err) {
     console.error("Patent search error:", err);
