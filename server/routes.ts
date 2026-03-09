@@ -104,10 +104,20 @@ Always remind users that you are an AI and they should consult a real licensed p
   });
 
 app.get("/api/test-patents", async (req, res) => {
+  const query = (req.query.q as string) || "touchscreen";
   try {
-    const response = await fetch("https://httpbin.org/json");
-    const data = await response.json();
-    res.json({ success: true, data });
+    const response = await fetch(
+      `https://patents.google.com/xhr/query?url=q%3D${encodeURIComponent(query)}&exp=&download=false`,
+      { 
+        headers: { 
+          "Accept": "application/json",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          "Referer": "https://patents.google.com"
+        } 
+      }
+    );
+    const text = await response.text();
+    res.json({ status: response.status, preview: text.slice(0, 1000) });
   } catch (err: any) {
     res.json({ error: err.message });
   }
