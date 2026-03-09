@@ -13,7 +13,7 @@ type Message = {
 export default function Home() {
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
-  const [patentContext, setPatentContext] = useState<string>("");
+  const patentContextRef = useRef<string>("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const askMutation = useAskQuestion();
@@ -47,12 +47,12 @@ export default function Home() {
     if (inputRef.current) inputRef.current.style.height = "auto";
 
     askMutation.mutate(
-      { question: userMessage, history, patentContext } as any,
+    { question: userMessage, history, patentContext: patentContextRef.current } as any,
       {
         onSuccess: (data: any) => {
           // Save patent context from first response so it persists
           if (messages.length === 0 && data.patentContext) {
-            setPatentContext(data.patentContext);
+            patentContextRef.current = data.patentContext;
           }
           setMessages(prev => [...prev, { role: "assistant", content: data.answer }]);
         },
@@ -74,8 +74,8 @@ export default function Home() {
   };
 
   const handleNewChat = () => {
-    setMessages([]);
-    setPatentContext("");
+  setMessages([]);
+  patentContextRef.current = "";
   };
 
   return (
