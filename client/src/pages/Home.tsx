@@ -13,11 +13,11 @@ type Message = {
 export default function Home() {
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
+  const [patentContext, setPatentContext] = useState<string>("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const askMutation = useAskQuestion();
 
-  // Auto-resize textarea
   useEffect(() => {
     if (inputRef.current) {
       inputRef.current.style.height = "auto";
@@ -25,7 +25,6 @@ export default function Home() {
     }
   }, [question]);
 
-  // Auto-scroll to bottom
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, askMutation.isPending]);
@@ -41,18 +40,20 @@ export default function Home() {
     }
 
     const userMessage = question.trim();
-    const newMessages: Message[] = [...messages, { role: "user", content: userMessage }];
-    setMessages(newMessages);
+    const history = messages.map(m => ({ role: m.role, content: m.content }));
+
+    setMessages(prev => [...prev, { role: "user", content: userMessage }]);
     setQuestion("");
     if (inputRef.current) inputRef.current.style.height = "auto";
 
-    // Pass conversation history (excluding the latest user message) to backend
-    const history = messages.map(m => ({ role: m.role, content: m.content }));
-
     askMutation.mutate(
-      { question: userMessage, history } as any,
+      { question: userMessage, history, patentContext } as any,
       {
         onSuccess: (data: any) => {
+          // Save patent context from first response so it persists
+          if (messages.length === 0 && data.patentContext) {
+            setPatentContext(data.patentContext);
+          }
           setMessages(prev => [...prev, { role: "assistant", content: data.answer }]);
         },
         onError: () => {
@@ -72,6 +73,11 @@ export default function Home() {
     }
   };
 
+  const handleNewChat = () => {
+    setMessages([]);
+    setPatentContext("");
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col font-sans">
       {/* Header */}
@@ -86,7 +92,7 @@ export default function Home() {
           </div>
           {messages.length > 0 && (
             <button
-              onClick={() => setMessages([])}
+              onClick={handleNewChat}
               className="ml-auto text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
               New Chat
@@ -161,7 +167,6 @@ export default function Home() {
           ))}
         </AnimatePresence>
 
-        {/* Loading indicator */}
         {askMutation.isPending && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -213,9 +218,6 @@ export default function Home() {
                 </button>
               </div>
             </div>
-            <p className="text-xs text-muted-foreground/50 text-center mt-2">
-              Not legal advice — consult a licensed patent attorney for serious matters
-            </p>
           </form>
         </div>
       </div>

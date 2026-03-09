@@ -12,11 +12,9 @@ const openrouter = new OpenAI({
 
 async function searchPatents(query: string) {
   try {
-    // Extract company name if mentioned, build a targeted search
     const companyMatch = query.match(/\b(Apple|Google|Microsoft|Samsung|Amazon|Meta|Tesla|IBM|Intel|Qualcomm)\b/i);
     const company = companyMatch ? companyMatch[1] : null;
-    
-    // Build a clean short search query
+
     const keywords = query
       .replace(/what patents does /i, "")
       .replace(/show me patents/i, "")
@@ -28,7 +26,7 @@ async function searchPatents(query: string) {
       .slice(0, 4)
       .join(" ");
 
-    const searchQuery = company 
+    const searchQuery = company
       ? `${keywords} assignee:${company}`
       : keywords;
 
@@ -41,7 +39,6 @@ async function searchPatents(query: string) {
     const data = await response.json() as any;
     const results = data?.organic_results || [];
 
-    // Filter to only US patents
     const usPatents = results.filter((r: any) => {
       const id = r.publication_number || r.patent_id || "";
       return id.startsWith("US");
@@ -76,15 +73,18 @@ export async function registerRoutes(
     try {
       const input = api.qna.ask.input.parse(req.body);
       const history: { role: "user" | "assistant"; content: string }[] = req.body.history || [];
+      const existingPatentContext: string = req.body.patentContext || "";
 
-      // Only search patents on the first message or if it seems like a new topic
-      const patents = history.length === 0 ? await searchPatents(input.question) : [];
-
-      const patentContext = patents.length > 0
-        ? `Here are ${patents.length} relevant real patents from the official USPTO database:\n\n${patents.map((p: any, i: number) =>
-            `Patent ${i + 1}:\n- Patent Number: ${p.id}\n- Title: "${p.title}"\n- Inventor(s): ${p.inventor}\n- Assignee: ${p.assignee}\n- Date: ${p.date}\n- Abstract: ${p.abstract}`
-          ).join("\n\n")}\n\n`
-        : "";
+      // Only search patents on the first message
+      let patentContext = existingPatentContext;
+      if (history.length === 0) {
+        const patents = await searchPatents(input.question);
+        patentContext = patents.length > 0
+          ? `Here are ${patents.length} relevant real patents from the USPTO database:\n\n${patents.map((p: any, i: number) =>
+              `Patent ${i + 1}:\n- Patent Number: ${p.id}\n- Title: "${p.title}"\n- Inventor(s): ${p.inventor}\n- Assignee: ${p.assignee}\n- Date: ${p.date}\n- Abstract: ${p.abstract}`
+            ).join("\n\n")}`
+          : "";
+      }
 
       const messages = [
         {
@@ -92,16 +92,23 @@ export async function registerRoutes(
           content: `You are an expert patent attorney assistant specializing in technology and software patents.
 Only answer questions related to patents, intellectual property, and patent law.
 Always explain things in plain English that a non-lawyer can understand.
-When patents are provided, cite them by their patent number (e.g. US10,123,456).
+When patents are provided to you, ONLY cite those exact patents by their patent number. Never invent or hallucinate patent numbers that were not provided.
 Format patent citations like: "According to US[patent_number] ([title])..."
-Maintain conversation context and refer back to previously discussed patents.
-IMPORTANT: Never include any disclaimer about not being a licensed attorney or recommending to consult an attorney. Do not add any legal disclaimers whatsoever.`
+Maintain conversation context and refer back to previously discussed patents when relevant.
+IMPORTANT: Never include any disclaimer about not being a licensed attorney. Do not add any legal disclaimers.`
         },
-        // Include conversation history
+        // Always inject patent context at the start of every request
+        ...(patentContext ? [{
+          role: "user" as const,
+          content: `For this entire conversation, here are the relevant patents to reference:\n\n${patentContext}`
+        }, {
+          role: "assistant" as const,
+          content: "Understood. I will only reference these specific patents when answering questions in our conversation."
+        }] : []),
         ...history,
         {
           role: "user" as const,
-          content: patentContext ? `${patentContext}User question: ${input.question}` : input.question
+          content: input.question
         }
       ];
 
@@ -112,12 +119,9 @@ IMPORTANT: Never include any disclaimer about not being a licensed attorney or r
 
       const answer = response.choices[0]?.message?.content || "Sorry, I could not generate an answer.";
 
-      const qna = await storage.createQna({
-        question: input.question,
-        answer,
-      });
+      const qna = await storage.createQna({ question: input.question, answer });
 
-      res.status(201).json(qna);
+      res.status(201).json({ ...qna, patentContext });
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({
