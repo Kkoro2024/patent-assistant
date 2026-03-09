@@ -103,5 +103,20 @@ Always remind users that you are an AI and they should consult a real licensed p
     }
   });
 
+  app.get("/api/test-patents", async (req, res) => {
+  const query = (req.query.q as string) || "touchscreen";
+  const keywords = query.split(" ").slice(0, 4).join(" ");
+  try {
+    const response = await fetch(
+      `https://developer.uspto.gov/ibd-api/v1/application/publications?searchText=${encodeURIComponent(keywords)}&start=0&rows=5`,
+      { headers: { "Accept": "application/json", "User-Agent": "Mozilla/5.0" } }
+    );
+    const data = await response.json();
+    res.json({ status: response.status, data });
+  } catch (err: any) {
+    res.json({ error: err.message });
+  }
+});
+
   return httpServer;
 }
