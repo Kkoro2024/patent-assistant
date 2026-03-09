@@ -12,18 +12,42 @@ const openrouter = new OpenAI({
 
 async function searchPatents(query: string) {
   try {
+    // Extract company name if mentioned, build a targeted search
+    const companyMatch = query.match(/\b(Apple|Google|Microsoft|Samsung|Amazon|Meta|Tesla|IBM|Intel|Qualcomm)\b/i);
+    const company = companyMatch ? companyMatch[1] : null;
+    
+    // Build a clean short search query
+    const keywords = query
+      .replace(/what patents does /i, "")
+      .replace(/show me patents/i, "")
+      .replace(/are there any patents/i, "")
+      .replace(/related to/i, "")
+      .replace(/hold related to/i, "")
+      .split(" ")
+      .filter(w => w.length > 3)
+      .slice(0, 4)
+      .join(" ");
+
+    const searchQuery = company 
+      ? `${keywords} assignee:${company}`
+      : keywords;
+
+    console.log(`Searching patents for: "${searchQuery}"`);
+
     const response = await fetch(
-      `https://serpapi.com/search.json?engine=google_patents&q=${encodeURIComponent(query)}+assignee:US&api_key=${process.env.SERPAPI_KEY}&num=10&hl=en`,
+      `https://serpapi.com/search.json?engine=google_patents&q=${encodeURIComponent(searchQuery)}&api_key=${process.env.SERPAPI_KEY}&num=10&hl=en`,
       { headers: { "Accept": "application/json" } }
     );
     const data = await response.json() as any;
     const results = data?.organic_results || [];
+
     // Filter to only US patents
     const usPatents = results.filter((r: any) => {
       const id = r.publication_number || r.patent_id || "";
       return id.startsWith("US");
     });
-    console.log(`SerpApi returned ${usPatents.length} US patents`);
+
+    console.log(`Found ${usPatents.length} US patents`);
     return usPatents.slice(0, 5).map((r: any) => ({
       id: r.publication_number || r.patent_id || "Unknown",
       title: r.title || "Unknown Title",
