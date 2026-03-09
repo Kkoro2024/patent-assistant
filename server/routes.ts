@@ -14,7 +14,7 @@ const openrouter = new OpenAI({
 async function searchPatents(query: string) {
   try {
     const response = await fetch(
-      `https://serpapi.com/search.json?engine=google_patents&q=${encodeURIComponent(query)}&api_key=${process.env.SERPAPI_KEY}&num=5`,
+      `https://serpapi.com/search.json?engine=google_patents&q=${encodeURIComponent(query)}&api_key=${process.env.SERPAPI_KEY}&num=10`,
       { headers: { "Accept": "application/json" } }
     );
     const data = await response.json() as any;
@@ -101,7 +101,7 @@ app.get("/api/test-patents", async (req, res) => {
   const query = (req.query.q as string) || "touchscreen";
   try {
     const response = await fetch(
-      `https://serpapi.com/search.json?engine=google_patents&q=${encodeURIComponent(query)}&api_key=${process.env.SERPAPI_KEY}&num=5`,
+      `https://serpapi.com/search.json?engine=google_patents&q=${encodeURIComponent(query)}&api_key=${process.env.SERPAPI_KEY}&num=10`,
       { headers: { "Accept": "application/json" } }
     );
     const data = await response.json();
