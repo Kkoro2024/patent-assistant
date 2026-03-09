@@ -160,7 +160,7 @@ export default function Home() {
               </div>
               {msg.role === "user" && (
                 <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary flex items-center justify-center mt-1">
-                  <span className="text-xs text-primary-foreground font-bold">U</span>
+                  <span className="text-xs text-primary-foreground font-bold">Me</span>
                 </div>
               )}
             </motion.div>
