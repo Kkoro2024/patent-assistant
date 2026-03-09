@@ -30,7 +30,7 @@ async function searchPatents(query: string) {
 
     // Use SerpApi's assignee filter for company searches
     const searchQuery = company
-      ? `assignee:${company} ${keywords}`
+      ? `${company} ${keywords}`
       : keywords;
 
     console.log(`Searching patents for: "${searchQuery}"`);
@@ -44,7 +44,10 @@ async function searchPatents(query: string) {
 
     const usPatents = results.filter((r: any) => {
       const id = r.publication_number || r.patent_id || "";
-      return id.startsWith("US");
+      const assignee = (r.assignee || "").toLowerCase();
+      const isUS = id.startsWith("US");
+      const assigneeMatch = company ? assignee.includes(company.toLowerCase()) : true;
+      return isUS && assigneeMatch;
     });
 
     console.log(`Found ${usPatents.length} US patents`);
