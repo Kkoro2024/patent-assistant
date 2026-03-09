@@ -13,34 +13,21 @@ const openrouter = new OpenAI({
 // Search real USPTO patents via PatentsView
 async function searchPatents(query: string) {
   try {
-    const keywords = query.split(" ").slice(0, 4).join(" ");
     const response = await fetch(
-      `https://ops.epo.org/3.2/rest-services/published-data/search?q=title%3D${encodeURIComponent(keywords)}&Range=1-5`,
-      {
-        headers: {
-          "Accept": "application/json",
-          "User-Agent": "Mozilla/5.0"
-        }
-      }
+      `https://serpapi.com/search.json?engine=google_patents&q=${encodeURIComponent(query)}&api_key=${process.env.SERPAPI_KEY}&num=5`,
+      { headers: { "Accept": "application/json" } }
     );
     const data = await response.json() as any;
-    const results = data?.["ops:world-patent-data"]?.["ops:biblio-search"]?.["ops:search-result"]?.["exchange-documents"] || [];
-    const docs = Array.isArray(results) ? results : [results];
-    console.log(`Espacenet search returned ${docs.length} results`);
-    return docs.slice(0, 5).map((d: any) => {
-      const bib = d?.["exchange-document"]?.["bibliographic-data"];
-      const title = bib?.["invention-title"]?.["$"] || "Unknown Title";
-      const docNum = d?.["exchange-document"]?.["@doc-number"] || "Unknown";
-      const country = d?.["exchange-document"]?.["@country"] || "";
-      return {
-        id: `${country}${docNum}`,
-        title,
-        abstract: "See full patent for details.",
-        inventor: "See patent record",
-        assignee: "See patent record",
-        date: d?.["exchange-document"]?.["@date-publ"] || "Unknown date",
-      };
-    });
+    const results = data?.organic_results || [];
+    console.log(`SerpApi patent search returned ${results.length} results`);
+    return results.map((r: any) => ({
+      id: r.patent_id || r.publication_number || "Unknown",
+      title: r.title || "Unknown Title",
+      abstract: (r.snippet || "No abstract available").slice(0, 300) + "...",
+      inventor: r.inventor || "Unknown",
+      assignee: r.assignee || "Individual inventor",
+      date: r.filing_date || r.publication_date || "Unknown date",
+    }));
   } catch (err) {
     console.error("Patent search error:", err);
     return [];
@@ -114,26 +101,11 @@ app.get("/api/test-patents", async (req, res) => {
   const query = (req.query.q as string) || "touchscreen";
   try {
     const response = await fetch(
-      `https://ppubs.uspto.gov/dirsearch-public/searches/searchWithBeFamily`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "User-Agent": "Mozilla/5.0",
-          "Referer": "https://ppubs.uspto.gov"
-        },
-        body: JSON.stringify({
-          query: `(${query}).ti.`,
-          start: 0,
-          pageCount: 5,
-          sort: "date_publ desc",
-          docTypes: ["US-PGPUB", "USPAT"],
-          dateRangeInput: {}
-        })
-      }
+      `https://serpapi.com/search.json?engine=google_patents&q=${encodeURIComponent(query)}&api_key=${process.env.SERPAPI_KEY}&num=5`,
+      { headers: { "Accept": "application/json" } }
     );
-    const text = await response.text();
-    res.json({ status: response.status, preview: text.slice(0, 1000) });
+    const data = await response.json();
+    res.json({ status: response.status, data });
   } catch (err: any) {
     res.json({ error: err.message });
   }
