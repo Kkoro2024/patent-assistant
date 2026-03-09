@@ -13,26 +13,26 @@ const openrouter = new OpenAI({
 // Search real USPTO patents via PatentsView
 async function searchPatents(query: string) {
   try {
-    const keywords = query.split(" ").slice(0, 4).join(" ");
+    const keywords = query.split(" ").slice(0, 4).join("+");
     const response = await fetch(
-      `https://efts.uspto.gov/LATEST/search-fields?searchText=${encodeURIComponent(keywords)}&hits.hits._source=patentTitle,patentNumber,inventorName,assigneeEntityName,abstractText`,
-      { 
-        headers: { 
+      `https://developer.uspto.gov/ibd-api/v1/application/publications?searchText=${encodeURIComponent(query)}&start=0&rows=5`,
+      {
+        headers: {
           "Accept": "application/json",
           "User-Agent": "Mozilla/5.0"
-        } 
+        }
       }
     );
     const data = await response.json() as any;
-    const hits = data?.hits?.hits || [];
-    console.log(`USPTO search for "${keywords}" returned ${hits.length} results`);
-    return hits.slice(0, 5).map((h: any) => ({
-      id: h._source?.patentNumber || "Unknown",
-      title: h._source?.patentTitle || "Unknown Title",
-      abstract: (h._source?.abstractText || "No abstract available").slice(0, 300) + "...",
-      inventor: h._source?.inventorName || "Unknown",
-      assignee: h._source?.assigneeEntityName || "Individual inventor",
-      date: h._source?.patentApplicationDate || "Unknown date",
+    const docs = data?.response?.docs || [];
+    console.log(`USPTO ODP search returned ${docs.length} results`);
+    return docs.map((d: any) => ({
+      id: d.patentNumber || d.applicationNumberText || "Unknown",
+      title: d.inventionTitle || "Unknown Title",
+      abstract: (d.abstractText?.[0] || "No abstract available").slice(0, 300) + "...",
+      inventor: d.inventorNameArrayText?.[0] || "Unknown",
+      assignee: d.assigneeEntityName?.[0] || "Individual inventor",
+      date: d.filingDate || "Unknown date",
     }));
   } catch (err) {
     console.error("Patent search error:", err);
