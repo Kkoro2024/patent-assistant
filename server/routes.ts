@@ -13,12 +13,15 @@ const openrouter = new OpenAI({
 // Search real USPTO patents via PatentsView
 async function searchPatents(query: string) {
   try {
+    // Extract key terms (first 3 words) for better search results
+    const keywords = query.split(" ").slice(0, 3).join(" ");
     const response = await fetch(
-      `https://search.patentsview.org/api/v1/patent/?q={"_text_all":{"patent_abstract":"${encodeURIComponent(query)}"}}&f=["patent_id","patent_title","patent_abstract","patent_date","inventor_last_name","inventor_first_name","assignee_organization"]&s=[{"patent_date":"desc"}]&o={"per_page":5}`,
+      `https://search.patentsview.org/api/v1/patent/?q={"_text_all":{"patent_title":"${encodeURIComponent(keywords)}"}}&f=["patent_id","patent_title","patent_abstract","patent_date","inventor_last_name","inventor_first_name","assignee_organization"]&s=[{"patent_date":"desc"}]&o={"per_page":5}`,
       { headers: { "Accept": "application/json" } }
     );
     const data = await response.json() as any;
     const patents = data?.patents || [];
+    console.log(`USPTO search for "${keywords}" returned ${patents.length} patents`);
     return patents.map((p: any) => ({
       id: p.patent_id || "Unknown",
       title: p.patent_title || "Unknown Title",
