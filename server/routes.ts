@@ -103,25 +103,15 @@ Always remind users that you are an AI and they should consult a real licensed p
     }
   });
 
-  app.get("/api/test-patents", async (req, res) => {
-    const query = (req.query.q as string) || "touchscreen";
-    try {
-      const response = await fetch(
-        `https://efts.uspto.gov/LATEST/search-fields?searchText=${encodeURIComponent(query)}&hits.hits._source=patentTitle,patentNumber,abstractText,inventorName&hits.hits.total.value=true`,
-        { 
-          headers: { 
-            "Accept": "application/json",
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-            "Referer": "https://efts.uspto.gov"
-          } 
-        }
-      );
-      const text = await response.text();
-      res.json({ status: response.status, preview: text.slice(0, 500) });
-    } catch (err: any) {
-      res.json({ error: err.message });
-    }
-  });
+app.get("/api/test-patents", async (req, res) => {
+  try {
+    const response = await fetch("https://httpbin.org/json");
+    const data = await response.json();
+    res.json({ success: true, data });
+  } catch (err: any) {
+    res.json({ error: err.message });
+  }
+});
 
   return httpServer;
 }
