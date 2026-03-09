@@ -114,8 +114,23 @@ app.get("/api/test-patents", async (req, res) => {
   const query = (req.query.q as string) || "touchscreen";
   try {
     const response = await fetch(
-      `https://ops.epo.org/3.2/rest-services/published-data/search?q=title%3D${encodeURIComponent(query)}&Range=1-5`,
-      { headers: { "Accept": "application/json", "User-Agent": "Mozilla/5.0" } }
+      `https://ppubs.uspto.gov/dirsearch-public/searches/searchWithBeFamily`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "User-Agent": "Mozilla/5.0",
+          "Referer": "https://ppubs.uspto.gov"
+        },
+        body: JSON.stringify({
+          query: `(${query}).ti.`,
+          start: 0,
+          pageCount: 5,
+          sort: "date_publ desc",
+          docTypes: ["US-PGPUB", "USPAT"],
+          dateRangeInput: {}
+        })
+      }
     );
     const text = await response.text();
     res.json({ status: response.status, preview: text.slice(0, 1000) });
