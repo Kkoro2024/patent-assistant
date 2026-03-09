@@ -15,18 +15,23 @@ async function searchPatents(query: string) {
     const companyMatch = query.match(/\b(Apple|Google|Microsoft|Samsung|Amazon|Meta|Tesla|IBM|Intel|Qualcomm)\b/i);
     const company = companyMatch ? companyMatch[1] : null;
 
-    // Strip question words and short words, keep only meaningful keywords
+    // Strip all common words, keep only the core technology keywords
+    const stopWords = new Set(["what", "patents", "does", "hold", "related", "about", "those", "their", "show", "have", "with", "that", "this", "from", "which", "where", "when", "how", "can", "the", "for", "and", "are", "its"]);
+    
     const keywords = query
       .replace(/[?!.,]/g, "")
       .split(" ")
-      .filter(w => w.length > 4)
-      .filter(w => !["patents", "holds", "related", "about", "those", "their", "whats", "show", "what", "does", "hold"].includes(w.toLowerCase()))
+      .map(w => w.toLowerCase())
+      .filter(w => w.length > 3)
+      .filter(w => !stopWords.has(w))
+      .filter(w => company ? w !== company.toLowerCase() : true)
       .slice(0, 3)
       .join(" ");
 
+    // Use SerpApi's assignee filter for company searches
     const searchQuery = company
-      ? `${company} ${keywords} patent`
-      : `${keywords} patent`;
+      ? `assignee:${company} ${keywords}`
+      : keywords;
 
     console.log(`Searching patents for: "${searchQuery}"`);
 
