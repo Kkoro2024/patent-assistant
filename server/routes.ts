@@ -13,22 +13,26 @@ const openrouter = new OpenAI({
 // Search real USPTO patents via PatentsView
 async function searchPatents(query: string) {
   try {
-    // Extract key terms (first 3 words) for better search results
-    const keywords = query.split(" ").slice(0, 3).join(" ");
+    const keywords = query.split(" ").slice(0, 4).join(" ");
     const response = await fetch(
-      `https://search.patentsview.org/api/v1/patent/?q={"_text_all":{"patent_title":"${encodeURIComponent(keywords)}"}}&f=["patent_id","patent_title","patent_abstract","patent_date","inventor_last_name","inventor_first_name","assignee_organization"]&s=[{"patent_date":"desc"}]&o={"per_page":5}`,
-      { headers: { "Accept": "application/json" } }
+      `https://efts.uspto.gov/LATEST/search-fields?searchText=${encodeURIComponent(keywords)}&hits.hits._source=patentTitle,patentNumber,inventorName,assigneeEntityName,abstractText`,
+      { 
+        headers: { 
+          "Accept": "application/json",
+          "User-Agent": "Mozilla/5.0"
+        } 
+      }
     );
     const data = await response.json() as any;
-    const patents = data?.patents || [];
-    console.log(`USPTO search for "${keywords}" returned ${patents.length} patents`);
-    return patents.map((p: any) => ({
-      id: p.patent_id || "Unknown",
-      title: p.patent_title || "Unknown Title",
-      abstract: (p.patent_abstract || "No abstract available").slice(0, 300) + "...",
-      inventor: `${p.inventors?.[0]?.inventor_first_name || ""} ${p.inventors?.[0]?.inventor_last_name || "Unknown"}`.trim(),
-      assignee: p.assignees?.[0]?.assignee_organization || "Individual inventor",
-      date: p.patent_date || "Unknown date",
+    const hits = data?.hits?.hits || [];
+    console.log(`USPTO search for "${keywords}" returned ${hits.length} results`);
+    return hits.slice(0, 5).map((h: any) => ({
+      id: h._source?.patentNumber || "Unknown",
+      title: h._source?.patentTitle || "Unknown Title",
+      abstract: (h._source?.abstractText || "No abstract available").slice(0, 300) + "...",
+      inventor: h._source?.inventorName || "Unknown",
+      assignee: h._source?.assigneeEntityName || "Individual inventor",
+      date: h._source?.patentApplicationDate || "Unknown date",
     }));
   } catch (err) {
     console.error("Patent search error:", err);
