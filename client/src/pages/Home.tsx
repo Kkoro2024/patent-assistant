@@ -51,7 +51,7 @@ export default function Home() {
       {
         onSuccess: (data: any) => {
           // Save patent context from first response so it persists
-          if (messages.length === 0 && data.patentContext) {
+          if (data.patentContext) {
             patentContextRef.current = data.patentContext;
           }
           setMessages(prev => [...prev, { role: "assistant", content: data.answer }]);

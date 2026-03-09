@@ -15,20 +15,18 @@ async function searchPatents(query: string) {
     const companyMatch = query.match(/\b(Apple|Google|Microsoft|Samsung|Amazon|Meta|Tesla|IBM|Intel|Qualcomm)\b/i);
     const company = companyMatch ? companyMatch[1] : null;
 
+    // Strip question words and short words, keep only meaningful keywords
     const keywords = query
-      .replace(/what patents does /i, "")
-      .replace(/show me patents/i, "")
-      .replace(/are there any patents/i, "")
-      .replace(/related to/i, "")
-      .replace(/hold related to/i, "")
+      .replace(/[?!.,]/g, "")
       .split(" ")
-      .filter(w => w.length > 3)
-      .slice(0, 4)
+      .filter(w => w.length > 4)
+      .filter(w => !["patents", "holds", "related", "about", "those", "their", "whats", "show", "what", "does", "hold"].includes(w.toLowerCase()))
+      .slice(0, 3)
       .join(" ");
 
     const searchQuery = company
-      ? `${keywords} assignee:${company}`
-      : keywords;
+      ? `${company} ${keywords} patent`
+      : `${keywords} patent`;
 
     console.log(`Searching patents for: "${searchQuery}"`);
 
