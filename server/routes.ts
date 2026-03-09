@@ -10,7 +10,6 @@ const openrouter = new OpenAI({
   apiKey: process.env.GROQ_API_KEY,
 });
 
-// Search real USPTO patents via PatentsView
 async function searchPatents(query: string) {
   try {
     const response = await fetch(
@@ -47,41 +46,46 @@ export async function registerRoutes(
   app.post(api.qna.ask.path, async (req, res) => {
     try {
       const input = api.qna.ask.input.parse(req.body);
+      const history: { role: "user" | "assistant"; content: string }[] = req.body.history || [];
 
-      // Search real USPTO patents first
-      const patents = await searchPatents(input.question);
+      // Only search patents on the first message or if it seems like a new topic
+      const patents = history.length === 0 ? await searchPatents(input.question) : [];
 
-      // Build patent context string with patent numbers for citation
       const patentContext = patents.length > 0
         ? `Here are ${patents.length} relevant real patents from the official USPTO database:\n\n${patents.map((p: any, i: number) =>
-            `Patent ${i + 1}:\n- Patent Number: US${p.id}\n- Title: "${p.title}"\n- Inventor(s): ${p.inventor}\n- Assignee: ${p.assignee}\n- Date: ${p.date}\n- Abstract: ${p.abstract}`
+            `Patent ${i + 1}:\n- Patent Number: ${p.id}\n- Title: "${p.title}"\n- Inventor(s): ${p.inventor}\n- Assignee: ${p.assignee}\n- Date: ${p.date}\n- Abstract: ${p.abstract}`
           ).join("\n\n")}\n\n`
-        : "No directly relevant patents were found in the USPTO database for this query.\n\n";
+        : "";
+
+      const messages = [
+        {
+          role: "system" as const,
+          content: `You are an expert patent attorney assistant specializing in technology and software patents.
+Only answer questions related to patents, intellectual property, and patent law.
+Always explain things in plain English that a non-lawyer can understand.
+When patents are provided from the USPTO database, you MUST cite them by their patent number (e.g. US10,123,456) when relevant.
+Format patent citations clearly like: "According to US[patent_number] ([title])..."
+Maintain context across the conversation and refer back to previously discussed patents when relevant.
+Always remind users that you are an AI and they should consult a real licensed patent attorney for serious legal matters.`
+        },
+        // Include conversation history
+        ...history,
+        {
+          role: "user" as const,
+          content: patentContext ? `${patentContext}User question: ${input.question}` : input.question
+        }
+      ];
 
       const response = await openrouter.chat.completions.create({
         model: "llama-3.3-70b-versatile",
-        messages: [
-          {
-            role: "system",
-            content: `You are an expert patent attorney assistant specializing in technology and software patents. 
-Only answer questions related to patents, intellectual property, and patent law. 
-Always explain things in plain English that a non-lawyer can understand. 
-When patents are provided from the USPTO database, you MUST cite them by their patent number (e.g. US10,123,456) when they are relevant to your answer.
-Format patent citations clearly like: "According to US[patent_number] ([title])..."
-Always remind users that you are an AI and they should consult a real licensed patent attorney for serious legal matters.`
-          },
-          {
-            role: "user",
-            content: `${patentContext}User question: ${input.question}`
-          }
-        ],
+        messages,
       });
 
       const answer = response.choices[0]?.message?.content || "Sorry, I could not generate an answer.";
 
       const qna = await storage.createQna({
         question: input.question,
-        answer: answer,
+        answer,
       });
 
       res.status(201).json(qna);
@@ -96,20 +100,6 @@ Always remind users that you are an AI and they should consult a real licensed p
       res.status(500).json({ message: "Internal server error" });
     }
   });
-
-app.get("/api/test-patents", async (req, res) => {
-  const query = (req.query.q as string) || "touchscreen";
-  try {
-    const response = await fetch(
-      `https://serpapi.com/search.json?engine=google_patents&q=${encodeURIComponent(query)}&api_key=${process.env.SERPAPI_KEY}&num=10`,
-      { headers: { "Accept": "application/json" } }
-    );
-    const data = await response.json();
-    res.json({ status: response.status, data });
-  } catch (err: any) {
-    res.json({ error: err.message });
-  }
-});
 
   return httpServer;
 }
