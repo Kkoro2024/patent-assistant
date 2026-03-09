@@ -13,7 +13,7 @@ const openrouter = new OpenAI({
 async function searchPatents(query: string) {
   try {
     const response = await fetch(
-      `https://serpapi.com/search.json?engine=google_patents&q=${encodeURIComponent(query)}&api_key=${process.env.SERPAPI_KEY}&num=10`,
+      `https://serpapi.com/search.json?engine=google_patents&q=${encodeURIComponent(query)}&api_key=${process.env.SERPAPI_KEY}&num=10&hl=en&patents=US`,
       { headers: { "Accept": "application/json" } }
     );
     const data = await response.json() as any;
@@ -66,7 +66,7 @@ Always explain things in plain English that a non-lawyer can understand.
 When patents are provided from the USPTO database, you MUST cite them by their patent number (e.g. US10,123,456) when relevant.
 Format patent citations clearly like: "According to US[patent_number] ([title])..."
 Maintain context across the conversation and refer back to previously discussed patents when relevant.
-Always remind users that you are an AI and they should consult a real licensed patent attorney for serious legal matters.`
+Only mention the attorney disclaimer ONCE per conversation, at the very end of your first response. Never repeat it again.`
         },
         // Include conversation history
         ...history,
