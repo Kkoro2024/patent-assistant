@@ -75,7 +75,7 @@ export async function registerRoutes(
 
       // Only search patents on the first message
       let patentContext = existingPatentContext;
-      if (!existingPatentContext) {
+      if (history.length === 0) {
         const patents = await searchPatents(input.question);
         patentContext = patents.length > 0
           ? `Here are ${patents.length} relevant real patents from the USPTO database:\n\n${patents.map((p: any, i: number) =>
