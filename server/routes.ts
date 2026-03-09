@@ -13,9 +13,9 @@ const openrouter = new OpenAI({
 // Search real USPTO patents via PatentsView
 async function searchPatents(query: string) {
   try {
-    const keywords = query.split(" ").slice(0, 4).join("+");
+    const keywords = query.split(" ").slice(0, 4).join(" ");
     const response = await fetch(
-      `https://developer.uspto.gov/ibd-api/v1/application/publications?searchText=${encodeURIComponent(query)}&start=0&rows=5`,
+      `https://ops.epo.org/3.2/rest-services/published-data/search?q=title%3D${encodeURIComponent(keywords)}&Range=1-5`,
       {
         headers: {
           "Accept": "application/json",
@@ -24,16 +24,23 @@ async function searchPatents(query: string) {
       }
     );
     const data = await response.json() as any;
-    const docs = data?.response?.docs || [];
-    console.log(`USPTO ODP search returned ${docs.length} results`);
-    return docs.map((d: any) => ({
-      id: d.patentNumber || d.applicationNumberText || "Unknown",
-      title: d.inventionTitle || "Unknown Title",
-      abstract: (d.abstractText?.[0] || "No abstract available").slice(0, 300) + "...",
-      inventor: d.inventorNameArrayText?.[0] || "Unknown",
-      assignee: d.assigneeEntityName?.[0] || "Individual inventor",
-      date: d.filingDate || "Unknown date",
-    }));
+    const results = data?.["ops:world-patent-data"]?.["ops:biblio-search"]?.["ops:search-result"]?.["exchange-documents"] || [];
+    const docs = Array.isArray(results) ? results : [results];
+    console.log(`Espacenet search returned ${docs.length} results`);
+    return docs.slice(0, 5).map((d: any) => {
+      const bib = d?.["exchange-document"]?.["bibliographic-data"];
+      const title = bib?.["invention-title"]?.["$"] || "Unknown Title";
+      const docNum = d?.["exchange-document"]?.["@doc-number"] || "Unknown";
+      const country = d?.["exchange-document"]?.["@country"] || "";
+      return {
+        id: `${country}${docNum}`,
+        title,
+        abstract: "See full patent for details.",
+        inventor: "See patent record",
+        assignee: "See patent record",
+        date: d?.["exchange-document"]?.["@date-publ"] || "Unknown date",
+      };
+    });
   } catch (err) {
     console.error("Patent search error:", err);
     return [];
@@ -107,14 +114,8 @@ app.get("/api/test-patents", async (req, res) => {
   const query = (req.query.q as string) || "touchscreen";
   try {
     const response = await fetch(
-      `https://patents.google.com/xhr/query?url=q%3D${encodeURIComponent(query)}&exp=&download=false`,
-      { 
-        headers: { 
-          "Accept": "application/json",
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-          "Referer": "https://patents.google.com"
-        } 
-      }
+      `https://ops.epo.org/3.2/rest-services/published-data/search?q=title%3D${encodeURIComponent(query)}&Range=1-5`,
+      { headers: { "Accept": "application/json", "User-Agent": "Mozilla/5.0" } }
     );
     const text = await response.text();
     res.json({ status: response.status, preview: text.slice(0, 1000) });
