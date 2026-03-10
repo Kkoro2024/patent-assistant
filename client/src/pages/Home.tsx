@@ -90,7 +90,7 @@ function parseEvaluatorResponse(content: string) {
   const obviousness = content.match(/OBVIOUSNESS RISK:\s*(\w+)/)?.[1];
   const priorArt = content.match(/PRIOR ART RISK:\s*(\w+)/)?.[1];
   const commercial = content.match(/COMMERCIAL POTENTIAL:\s*(\w+)/)?.[1];
-  const verdict = content.match(/VERDICT:\s*(.+?)(?=\n\n|\nSTRENGTHS)/s)?.[1]?.trim();
+  const verdict = content.match(/VERDICT:\s*([\s\S]+?)(?=\n\nSTRENGTHS|\nSTRENGTHS)/)?.[1]?.trim();
   const strengthsMatch = content.match(/STRENGTHS:\s*([\s\S]+?)(?=\n\nWEAKNESSES)/)?.[1];
   const weaknessesMatch = content.match(/WEAKNESSES:\s*([\s\S]+?)(?=\n\nRECOMMENDATION)/)?.[1];
   const recommendation = content.match(/RECOMMENDATION:\s*([\s\S]+?)$/)?.[1]?.trim();
