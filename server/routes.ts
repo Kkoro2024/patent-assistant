@@ -156,6 +156,47 @@ async function searchPatents(query: string) {
   }
 }
 
+async function searchPatentTrends(query: string) {
+  try {
+    const response = await fetch(
+      `https://serpapi.com/search.json?engine=google_patents&q=${encodeURIComponent(query)}&api_key=${process.env.SERPAPI_KEY}&num=100&hl=en`,
+      { headers: { "Accept": "application/json" } }
+    );
+    const data = await response.json() as any;
+    const results = data?.organic_results || [];
+
+    const yearCounts: Record<string, number> = {};
+    const assigneeCounts: Record<string, number> = {};
+
+    results.forEach((r: any) => {
+      const date = r.grant_date || r.publication_date || "";
+      const year = date.match(/\d{4}/)?.[0];
+      if (year && parseInt(year) >= 2010 && parseInt(year) <= 2025) {
+        yearCounts[year] = (yearCounts[year] || 0) + 1;
+      }
+      const assignee = r.assignee || "Individual";
+      if (assignee && assignee !== "Individual") {
+        const shortName = assignee.split(" ").slice(0, 2).join(" ");
+        assigneeCounts[shortName] = (assigneeCounts[shortName] || 0) + 1;
+      }
+    });
+
+    const yearData = Object.entries(yearCounts)
+      .sort(([a], [b]) => parseInt(a) - parseInt(b))
+      .map(([year, count]) => ({ year, count }));
+
+    const topAssignees = Object.entries(assigneeCounts)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 5)
+      .map(([name, count]) => ({ name, count }));
+
+    return { query, total: results.length, yearData, topAssignees };
+  } catch (err) {
+    console.error("Trends search error:", err);
+    return { query, total: 0, yearData: [], topAssignees: [] };
+  }
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -164,6 +205,14 @@ export async function registerRoutes(
   app.get(api.qna.list.path, async (req, res) => {
     const qnas = await storage.getQnas();
     res.json(qnas);
+  });
+
+  // Trends endpoint
+  app.get("/api/trends", async (req, res) => {
+    const query = (req.query.q as string) || "";
+    if (!query.trim()) return res.status(400).json({ message: "Query required" });
+    const trends = await searchPatentTrends(query);
+    res.json(trends);
   });
 
   app.post(api.qna.ask.path, async (req, res) => {

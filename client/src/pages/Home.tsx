@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAskQuestion } from "@/hooks/use-qna";
-import { Sparkles, Loader2, CornerDownLeft, Scale, Search, Lightbulb, MessageSquare, FileText, ShieldAlert } from "lucide-react";
+import { Sparkles, Loader2, CornerDownLeft, Scale, Search, Lightbulb, MessageSquare, FileText, ShieldAlert, TrendingUp } from "lucide-react";
 import { z } from "zod";
 import { api } from "@shared/routes";
 
@@ -10,7 +10,14 @@ type Message = {
   content: string;
 };
 
-type Mode = "chat" | "evaluator" | "search" | "drafter" | "infringement";
+type Mode = "chat" | "evaluator" | "search" | "drafter" | "infringement" | "trends";
+
+type TrendData = {
+  query: string;
+  total: number;
+  yearData: { year: string; count: number }[];
+  topAssignees: { name: string; count: number }[];
+};
 
 const MODES: { id: Mode; label: string; icon: any; description: string; placeholder: string; suggestions: string[] }[] = [
   {
@@ -77,10 +84,23 @@ const MODES: { id: Mode; label: string; icon: any; description: string; placehol
       "A foldable phone with a flexible display",
       "Wireless earbuds that automatically pause when removed"
     ]
+  },
+  {
+    id: "trends",
+    label: "Trends",
+    icon: TrendingUp,
+    description: "Visualize patent filing trends for any technology",
+    placeholder: "Enter a technology keyword (e.g. 'artificial intelligence')...",
+    suggestions: [
+      "artificial intelligence",
+      "electric vehicle battery",
+      "augmented reality",
+      "quantum computing"
+    ]
   }
 ];
 
-// Parse evaluator output into structured visual components
+// ── Evaluator parsing ──────────────────────────────────────────────────────
 function parseEvaluatorResponse(content: string) {
   const patScore = content.match(/PATENTABILITY SCORE:\s*(\d+)\/10/)?.[1];
   const bizScore = content.match(/BUSINESS VIABILITY SCORE:\s*(\d+)\/10/)?.[1];
@@ -105,19 +125,14 @@ function ScoreRing({ score, label, color }: { score: number; label: string; colo
   const radius = 28;
   const circumference = 2 * Math.PI * radius;
   const progress = (score / 10) * circumference;
-
   return (
     <div className="flex flex-col items-center gap-1">
       <div className="relative w-20 h-20">
         <svg className="w-20 h-20 -rotate-90" viewBox="0 0 72 72">
           <circle cx="36" cy="36" r={radius} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="6" />
-          <circle
-            cx="36" cy="36" r={radius} fill="none"
-            stroke={color} strokeWidth="6"
-            strokeDasharray={`${progress} ${circumference}`}
-            strokeLinecap="round"
-            style={{ transition: "stroke-dasharray 1s ease" }}
-          />
+          <circle cx="36" cy="36" r={radius} fill="none" stroke={color} strokeWidth="6"
+            strokeDasharray={`${progress} ${circumference}`} strokeLinecap="round"
+            style={{ transition: "stroke-dasharray 1s ease" }} />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
           <span className="text-xl font-bold text-white">{score}<span className="text-xs text-white/50">/10</span></span>
@@ -150,29 +165,22 @@ function EvaluatorCard({ data }: { data: NonNullable<ReturnType<typeof parseEval
       animate={{ opacity: 1, y: 0 }}
       className="rounded-2xl overflow-hidden border border-white/10 bg-gradient-to-b from-white/5 to-white/[0.02]"
     >
-      {/* Scores */}
       <div className="px-6 py-5 border-b border-white/10 flex justify-around">
         <ScoreRing score={data.patScore} label="Patentability" color="#c9a84c" />
         <ScoreRing score={data.bizScore} label="Business Viability" color="#60a5fa" />
       </div>
-
-      {/* Risk grid */}
       <div className="px-6 py-4 grid grid-cols-2 gap-3 border-b border-white/10">
         <RiskBadge label="Novelty" value={data.novelty} />
         <RiskBadge label="Obviousness Risk" value={data.obviousness} />
         <RiskBadge label="Prior Art Risk" value={data.priorArt} />
         <RiskBadge label="Commercial Potential" value={data.commercial} />
       </div>
-
-      {/* Verdict */}
       {data.verdict && (
         <div className="px-6 py-4 border-b border-white/10">
           <p className="text-xs text-white/40 uppercase tracking-wider mb-1">Verdict</p>
           <p className="text-sm text-white/80 leading-relaxed">{data.verdict}</p>
         </div>
       )}
-
-      {/* Strengths & Weaknesses */}
       <div className="px-6 py-4 grid grid-cols-2 gap-4 border-b border-white/10">
         {data.strengths.length > 0 && (
           <div>
@@ -195,12 +203,91 @@ function EvaluatorCard({ data }: { data: NonNullable<ReturnType<typeof parseEval
           </div>
         )}
       </div>
-
-      {/* Recommendation */}
       {data.recommendation && (
         <div className="px-6 py-4">
           <p className="text-xs text-[#c9a84c]/70 uppercase tracking-wider mb-1">Recommendation</p>
           <p className="text-sm text-white/70 leading-relaxed">{data.recommendation}</p>
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
+// ── Trends Chart ──────────────────────────────────────────────────────────
+function TrendsChart({ data }: { data: TrendData }) {
+  const maxCount = Math.max(...data.yearData.map(d => d.count), 1);
+  const maxAssignee = Math.max(...data.topAssignees.map(d => d.count), 1);
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+      className="rounded-2xl overflow-hidden border border-white/10 bg-gradient-to-b from-white/5 to-white/[0.02]">
+
+      <div className="px-6 py-4 border-b border-white/10">
+        <p className="text-xs text-white/40 uppercase tracking-wider mb-1">Patent Trends</p>
+        <p className="text-lg font-bold text-white" style={{ fontFamily: "Georgia, serif" }}>
+          "{data.query}"
+        </p>
+        <p className="text-xs mt-1" style={{ color: "#c9a84c" }}>
+          {data.total} patents analyzed
+        </p>
+      </div>
+
+      {data.yearData.length > 0 && (
+        <div className="px-6 py-5 border-b border-white/10">
+          <p className="text-xs text-white/40 uppercase tracking-wider mb-4">Filings by Year</p>
+          <div className="flex items-end gap-1.5 h-32">
+            {data.yearData.map((d, i) => (
+              <div key={d.year} className="flex flex-col items-center gap-1 flex-1">
+                <motion.div
+                  initial={{ height: 0 }}
+                  animate={{ height: `${(d.count / maxCount) * 100}%` }}
+                  transition={{ delay: i * 0.05, duration: 0.5, ease: "easeOut" }}
+                  className="w-full rounded-t-sm min-h-[4px]"
+                  style={{
+                    background: "linear-gradient(to top, #c9a84c, #e8c97a)",
+                    opacity: 0.7 + (d.count / maxCount) * 0.3,
+                  }}
+                  title={`${d.year}: ${d.count} patents`}
+                />
+                <span className="text-[9px] text-white/30" style={{ fontFamily: "system-ui" }}>
+                  {d.year.slice(2)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {data.topAssignees.length > 0 && (
+        <div className="px-6 py-5">
+          <p className="text-xs text-white/40 uppercase tracking-wider mb-4">Top Patent Holders</p>
+          <div className="space-y-3">
+            {data.topAssignees.map((a, i) => (
+              <div key={a.name} className="space-y-1">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-white/70" style={{ fontFamily: "system-ui" }}>{a.name}</span>
+                  <span className="text-xs font-bold" style={{ color: "#c9a84c", fontFamily: "system-ui" }}>{a.count}</span>
+                </div>
+                <div className="h-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.06)" }}>
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${(a.count / maxAssignee) * 100}%` }}
+                    transition={{ delay: 0.3 + i * 0.1, duration: 0.6, ease: "easeOut" }}
+                    className="h-full rounded-full"
+                    style={{ background: "linear-gradient(to right, #c9a84c, #e8c97a)" }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {data.yearData.length === 0 && data.topAssignees.length === 0 && (
+        <div className="px-6 py-8 text-center">
+          <p className="text-sm text-white/40" style={{ fontFamily: "system-ui" }}>
+            No trend data found. Try a different keyword.
+          </p>
         </div>
       )}
     </motion.div>
@@ -225,6 +312,8 @@ export default function Home() {
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [mode, setMode] = useState<Mode>("chat");
+  const [trendsData, setTrendsData] = useState<TrendData | null>(null);
+  const [trendsLoading, setTrendsLoading] = useState(false);
   const patentContextRef = useRef<string>("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -240,18 +329,40 @@ export default function Home() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, askMutation.isPending]);
+  }, [messages, askMutation.isPending, trendsData]);
 
   const handleModeChange = (newMode: Mode) => {
     setMode(newMode);
     setMessages([]);
+    setTrendsData(null);
     patentContextRef.current = "";
     setQuestion("");
   };
 
+  const handleTrendsSubmit = async (keyword: string) => {
+    setTrendsLoading(true);
+    setTrendsData(null);
+    try {
+      const res = await fetch(`/api/trends?q=${encodeURIComponent(keyword)}`);
+      const data = await res.json();
+      setTrendsData(data);
+    } catch {
+      setTrendsData({ query: keyword, total: 0, yearData: [], topAssignees: [] });
+    } finally {
+      setTrendsLoading(false);
+    }
+  };
+
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (!question.trim() || askMutation.isPending) return;
+    if (!question.trim() || askMutation.isPending || trendsLoading) return;
+
+    if (mode === "trends") {
+      handleTrendsSubmit(question.trim());
+      setQuestion("");
+      return;
+    }
+
     try { api.qna.ask.input.parse({ question }); } catch (err) { if (err instanceof z.ZodError) return; }
 
     const userMessage = question.trim();
@@ -277,6 +388,8 @@ export default function Home() {
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSubmit(); }
   };
+
+  const isLoading = askMutation.isPending || trendsLoading;
 
   return (
     <div className="min-h-screen flex flex-col" style={{
@@ -310,9 +423,9 @@ export default function Home() {
                 Powered by Groq · USPTO Patents
               </p>
             </div>
-            {messages.length > 0 && (
+            {(messages.length > 0 || trendsData) && (
               <button
-                onClick={() => { setMessages([]); patentContextRef.current = ""; }}
+                onClick={() => { setMessages([]); setTrendsData(null); patentContextRef.current = ""; }}
                 className="ml-auto text-xs transition-colors"
                 style={{ color: "rgba(255,255,255,0.3)", fontFamily: "system-ui" }}
                 onMouseEnter={e => (e.currentTarget.style.color = "rgba(255,255,255,0.7)")}
@@ -352,7 +465,9 @@ export default function Home() {
 
       {/* Messages */}
       <main className="flex-1 w-full max-w-3xl mx-auto px-4 py-8 space-y-6">
-        {messages.length === 0 && !askMutation.isPending && (
+
+        {/* Empty state */}
+        {messages.length === 0 && !isLoading && !trendsData && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -404,6 +519,10 @@ export default function Home() {
           </motion.div>
         )}
 
+        {/* Trends result */}
+        {mode === "trends" && trendsData && <TrendsChart data={trendsData} />}
+
+        {/* Chat messages */}
         <AnimatePresence>
           {messages.map((msg, idx) => (
             <motion.div
@@ -449,7 +568,8 @@ export default function Home() {
           ))}
         </AnimatePresence>
 
-        {askMutation.isPending && (
+        {/* Loading */}
+        {isLoading && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3 justify-start">
             <div className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center" style={{
               background: "linear-gradient(135deg, rgba(201,168,76,0.2), rgba(201,168,76,0.05))",
@@ -499,21 +619,21 @@ export default function Home() {
                 color: "rgba(255,255,255,0.85)",
                 fontFamily: "system-ui, sans-serif",
               }}
-              disabled={askMutation.isPending}
+              disabled={isLoading}
               rows={1}
             />
             <div className="absolute bottom-3 right-3">
               <button
                 onClick={() => handleSubmit()}
-                disabled={!question.trim() || askMutation.isPending}
+                disabled={!question.trim() || isLoading}
                 className="p-2 rounded-xl transition-all flex items-center justify-center h-9 w-9"
                 style={{
                   background: question.trim() ? "linear-gradient(135deg, #c9a84c, #a07830)" : "rgba(255,255,255,0.06)",
-                  opacity: askMutation.isPending ? 0.5 : 1,
-                  cursor: !question.trim() || askMutation.isPending ? "not-allowed" : "pointer"
+                  opacity: isLoading ? 0.5 : 1,
+                  cursor: !question.trim() || isLoading ? "not-allowed" : "pointer"
                 }}
               >
-                {askMutation.isPending
+                {isLoading
                   ? <Loader2 className="w-4 h-4 text-white animate-spin" />
                   : <CornerDownLeft className="w-4 h-4" style={{ color: question.trim() ? "black" : "rgba(255,255,255,0.3)" }} />
                 }
