@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAskQuestion } from "@/hooks/use-qna";
-import { Sparkles, Loader2, CornerDownLeft, Scale } from "lucide-react";
+import { Sparkles, Loader2, CornerDownLeft, Scale, Search, Lightbulb, MessageSquare } from "lucide-react";
 import { z } from "zod";
 import { api } from "@shared/routes";
 
@@ -10,13 +10,60 @@ type Message = {
   content: string;
 };
 
+type Mode = "chat" | "evaluator" | "search";
+
+const MODES: { id: Mode; label: string; icon: any; description: string; placeholder: string; suggestions: string[] }[] = [
+  {
+    id: "chat",
+    label: "Patent Chat",
+    icon: MessageSquare,
+    description: "Ask anything about patents and IP law",
+    placeholder: "Ask a patent question...",
+    suggestions: [
+      "What patents does Apple hold on the iPhone?",
+      "Can I patent a software idea?",
+      "What is prior art?",
+      "How long does a patent last?"
+    ]
+  },
+  {
+    id: "evaluator",
+    label: "Idea Evaluator",
+    icon: Lightbulb,
+    description: "Describe your invention and get a patentability score",
+    placeholder: "Describe your invention idea in detail...",
+    suggestions: [
+      "A app that uses AI to match lawyers with clients",
+      "A water bottle that tracks your daily hydration",
+      "A new algorithm for compressing video files",
+      "A shoe sole that generates electricity while walking"
+    ]
+  },
+  {
+    id: "search",
+    label: "Patent Search",
+    icon: Search,
+    description: "Search and analyze existing patents by keyword",
+    placeholder: "Search for patents related to...",
+    suggestions: [
+      "Search patents related to facial recognition",
+      "What patents exist for wireless charging?",
+      "Find patents on blockchain technology",
+      "Show me Tesla's battery patents"
+    ]
+  }
+];
+
 export default function Home() {
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
+  const [mode, setMode] = useState<Mode>("chat");
   const patentContextRef = useRef<string>("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const askMutation = useAskQuestion();
+
+  const currentMode = MODES.find(m => m.id === mode)!;
 
   useEffect(() => {
     if (inputRef.current) {
@@ -28,6 +75,13 @@ export default function Home() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, askMutation.isPending]);
+
+  const handleModeChange = (newMode: Mode) => {
+    setMode(newMode);
+    setMessages([]);
+    patentContextRef.current = "";
+    setQuestion("");
+  };
 
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -47,10 +101,9 @@ export default function Home() {
     if (inputRef.current) inputRef.current.style.height = "auto";
 
     askMutation.mutate(
-    { question: userMessage, history, patentContext: patentContextRef.current } as any,
+      { question: userMessage, history, patentContext: patentContextRef.current, mode } as any,
       {
         onSuccess: (data: any) => {
-          // Save patent context from first response so it persists
           if (data.patentContext) {
             patentContextRef.current = data.patentContext;
           }
@@ -74,8 +127,8 @@ export default function Home() {
   };
 
   const handleNewChat = () => {
-  setMessages([]);
-  patentContextRef.current = "";
+    setMessages([]);
+    patentContextRef.current = "";
   };
 
   return (
@@ -99,6 +152,27 @@ export default function Home() {
             </button>
           )}
         </div>
+
+        {/* Mode Selector */}
+        <div className="max-w-3xl mx-auto mt-3 flex gap-2">
+          {MODES.map((m) => {
+            const Icon = m.icon;
+            return (
+              <button
+                key={m.id}
+                onClick={() => handleModeChange(m.id)}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  mode === m.id
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                {m.label}
+              </button>
+            );
+          })}
+        </div>
       </header>
 
       {/* Messages */}
@@ -107,22 +181,15 @@ export default function Home() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="flex flex-col items-center justify-center py-24 text-center space-y-4"
+            className="flex flex-col items-center justify-center py-20 text-center space-y-4"
           >
             <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-              <Scale className="w-8 h-8 text-primary" />
+              {(() => { const Icon = currentMode.icon; return <Icon className="w-8 h-8 text-primary" />; })()}
             </div>
-            <h2 className="text-xl font-semibold text-foreground">Ask me anything about patents</h2>
-            <p className="text-muted-foreground max-w-sm text-sm">
-              I can search real USPTO patents, explain patent law, and help you understand intellectual property.
-            </p>
+            <h2 className="text-xl font-semibold text-foreground">{currentMode.label}</h2>
+            <p className="text-muted-foreground max-w-sm text-sm">{currentMode.description}</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4 w-full max-w-lg">
-              {[
-                "What patents does Apple hold on the iPhone?",
-                "Can I patent a software idea?",
-                "What is prior art?",
-                "How long does a patent last?"
-              ].map((suggestion) => (
+              {currentMode.suggestions.map((suggestion) => (
                 <button
                   key={suggestion}
                   onClick={() => { setQuestion(suggestion); inputRef.current?.focus(); }}
@@ -199,7 +266,7 @@ export default function Home() {
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask a follow-up or a new question..."
+                placeholder={currentMode.placeholder}
                 className="w-full bg-transparent px-5 py-4 text-base placeholder:text-muted-foreground/60 focus:outline-none resize-none min-h-[56px] max-h-[200px]"
                 disabled={askMutation.isPending}
                 rows={1}
