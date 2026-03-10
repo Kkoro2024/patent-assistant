@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAskQuestion } from "@/hooks/use-qna";
-import { Sparkles, Loader2, CornerDownLeft, Scale, Search, Lightbulb, MessageSquare } from "lucide-react";
+import { Sparkles, Loader2, CornerDownLeft, Scale, Search, Lightbulb, MessageSquare, FileText, ShieldAlert } from "lucide-react";
 import { z } from "zod";
 import { api } from "@shared/routes";
 
@@ -10,7 +10,7 @@ type Message = {
   content: string;
 };
 
-type Mode = "chat" | "evaluator" | "search";
+type Mode = "chat" | "evaluator" | "search" | "drafter" | "infringement";
 
 const MODES: { id: Mode; label: string; icon: any; description: string; placeholder: string; suggestions: string[] }[] = [
   {
@@ -30,10 +30,10 @@ const MODES: { id: Mode; label: string; icon: any; description: string; placehol
     id: "evaluator",
     label: "Idea Evaluator",
     icon: Lightbulb,
-    description: "Describe your invention and get a patentability score",
+    description: "Describe your invention and get a patentability + business score",
     placeholder: "Describe your invention idea in detail...",
     suggestions: [
-      "A app that uses AI to match lawyers with clients",
+      "An app that uses AI to match lawyers with clients",
       "A water bottle that tracks your daily hydration",
       "A new algorithm for compressing video files",
       "A shoe sole that generates electricity while walking"
@@ -50,6 +50,32 @@ const MODES: { id: Mode; label: string; icon: any; description: string; placehol
       "What patents exist for wireless charging?",
       "Find patents on blockchain technology",
       "Show me Tesla's battery patents"
+    ]
+  },
+  {
+    id: "drafter",
+    label: "Patent Drafter",
+    icon: FileText,
+    description: "Describe your invention and get a professional patent claim draft",
+    placeholder: "Describe your invention in detail — how it works, what makes it unique...",
+    suggestions: [
+      "A smart lock that opens using facial recognition on your phone",
+      "A method for filtering microplastics from tap water using magnets",
+      "An AI system that predicts traffic jams 30 minutes in advance",
+      "A wearable device that monitors blood sugar without needles"
+    ]
+  },
+  {
+    id: "infringement",
+    label: "Infringement Check",
+    icon: ShieldAlert,
+    description: "Describe your product and check if it may infringe existing patents",
+    placeholder: "Describe your product or technology in detail...",
+    suggestions: [
+      "A fingerprint scanner built into a phone screen",
+      "An app that lets users pay with a QR code",
+      "A foldable phone with a flexible display",
+      "Wireless earbuds that automatically pause when removed"
     ]
   }
 ];
@@ -154,14 +180,14 @@ export default function Home() {
         </div>
 
         {/* Mode Selector */}
-        <div className="max-w-3xl mx-auto mt-3 flex gap-2">
+        <div className="max-w-3xl mx-auto mt-3 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
           {MODES.map((m) => {
             const Icon = m.icon;
             return (
               <button
                 key={m.id}
                 onClick={() => handleModeChange(m.id)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                className={`flex-shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                   mode === m.id
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
