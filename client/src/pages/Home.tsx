@@ -235,12 +235,12 @@ function TrendsChart({ data }: { data: TrendData }) {
       {data.yearData.length > 0 && (
         <div className="px-6 py-5 border-b border-white/10">
           <p className="text-xs text-white/40 uppercase tracking-wider mb-4">Filings by Year</p>
-          <div className="flex items-end gap-1.5 h-32">
+          <div className="flex items-end gap-1.5" style={{ height: "128px" }}>
             {data.yearData.map((d, i) => (
               <div key={d.year} className="flex flex-col items-center gap-1 flex-1">
                 <motion.div
                   initial={{ height: 0 }}
-                  animate={{ height: `${(d.count / maxCount) * 100}%` }}
+                  animate={{ height: `${Math.max((d.count / maxCount) * 112, 4)}px` }}
                   transition={{ delay: i * 0.05, duration: 0.5, ease: "easeOut" }}
                   className="w-full rounded-t-sm min-h-[4px]"
                   style={{
