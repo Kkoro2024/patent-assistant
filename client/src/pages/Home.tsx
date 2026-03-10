@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAskQuestion } from "@/hooks/use-qna";
-import { Sparkles, Loader2, CornerDownLeft, Scale, Search, Lightbulb, MessageSquare, FileText, ShieldAlert, TrendingUp } from "lucide-react";
+import { Sparkles, Loader2, CornerDownLeft, Scale, Search, Lightbulb, FileText, ShieldAlert, TrendingUp } from "lucide-react";
 import { z } from "zod";
 import { api } from "@shared/routes";
 
@@ -10,7 +10,7 @@ type Message = {
   content: string;
 };
 
-type Mode = "chat" | "evaluator" | "search" | "drafter" | "infringement" | "trends";
+type Mode = "comparison" | "evaluator" | "search" | "drafter" | "infringement" | "trends";
 
 type TrendData = {
   query: string;
@@ -19,18 +19,23 @@ type TrendData = {
   topAssignees: { name: string; count: number }[];
 };
 
+type ComparisonData = {
+  a: TrendData;
+  b: TrendData;
+};
+
 const MODES: { id: Mode; label: string; icon: any; description: string; placeholder: string; suggestions: string[] }[] = [
   {
-    id: "chat",
-    label: "Patent Chat",
-    icon: MessageSquare,
-    description: "Ask anything about patents and IP law",
-    placeholder: "Ask a patent question...",
+    id: "comparison",
+    label: "Compare Industries",
+    icon: Scale,
+    description: "Compare two technology fields head-to-head by patent activity",
+    placeholder: "Enter two industries separated by vs (e.g. AI vs Blockchain)...",
     suggestions: [
-      "What patents does Apple hold on the iPhone?",
-      "Can I patent a software idea?",
-      "What is prior art?",
-      "How long does a patent last?"
+      "artificial intelligence vs blockchain",
+      "electric vehicles vs hydrogen fuel",
+      "augmented reality vs virtual reality",
+      "quantum computing vs classical computing"
     ]
   },
   {
@@ -100,7 +105,6 @@ const MODES: { id: Mode; label: string; icon: any; description: string; placehol
   }
 ];
 
-// ── Evaluator parsing ──────────────────────────────────────────────────────
 function parseEvaluatorResponse(content: string) {
   const patScore = content.match(/PATENTABILITY SCORE:\s*(\d+)\/10/)?.[1];
   const bizScore = content.match(/BUSINESS VIABILITY SCORE:\s*(\d+)\/10/)?.[1];
@@ -213,7 +217,6 @@ function EvaluatorCard({ data }: { data: NonNullable<ReturnType<typeof parseEval
   );
 }
 
-// ── Trends Chart ──────────────────────────────────────────────────────────
 function TrendsChart({ data }: { data: TrendData }) {
   const maxCount = Math.max(...data.yearData.map(d => d.count), 1);
   const maxAssignee = Math.max(...data.topAssignees.map(d => d.count), 1);
@@ -221,17 +224,11 @@ function TrendsChart({ data }: { data: TrendData }) {
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
       className="rounded-2xl overflow-hidden border border-white/10 bg-gradient-to-b from-white/5 to-white/[0.02]">
-
       <div className="px-6 py-4 border-b border-white/10">
         <p className="text-xs text-white/40 uppercase tracking-wider mb-1">Patent Trends</p>
-        <p className="text-lg font-bold text-white" style={{ fontFamily: "Georgia, serif" }}>
-          "{data.query}"
-        </p>
-        <p className="text-xs mt-1" style={{ color: "#c9a84c" }}>
-          {data.total} patents analyzed
-        </p>
+        <p className="text-lg font-bold text-white" style={{ fontFamily: "Georgia, serif" }}>"{data.query}"</p>
+        <p className="text-xs mt-1" style={{ color: "#c9a84c" }}>{data.total} patents analyzed</p>
       </div>
-
       {data.yearData.length > 0 && (
         <div className="px-6 py-5 border-b border-white/10">
           <p className="text-xs text-white/40 uppercase tracking-wider mb-4">Filings by Year</p>
@@ -243,21 +240,15 @@ function TrendsChart({ data }: { data: TrendData }) {
                   animate={{ height: `${Math.max((d.count / maxCount) * 112, 4)}px` }}
                   transition={{ delay: i * 0.05, duration: 0.5, ease: "easeOut" }}
                   className="w-full rounded-t-sm min-h-[4px]"
-                  style={{
-                    background: "linear-gradient(to top, #c9a84c, #e8c97a)",
-                    opacity: 0.7 + (d.count / maxCount) * 0.3,
-                  }}
+                  style={{ background: "linear-gradient(to top, #c9a84c, #e8c97a)", opacity: 0.7 + (d.count / maxCount) * 0.3 }}
                   title={`${d.year}: ${d.count} patents`}
                 />
-                <span className="text-[9px] text-white/30" style={{ fontFamily: "system-ui" }}>
-                  {d.year.slice(2)}
-                </span>
+                <span className="text-[9px] text-white/30" style={{ fontFamily: "system-ui" }}>{d.year.slice(2)}</span>
               </div>
             ))}
           </div>
         </div>
       )}
-
       {data.topAssignees.length > 0 && (
         <div className="px-6 py-5">
           <p className="text-xs text-white/40 uppercase tracking-wider mb-4">Top Patent Holders</p>
@@ -282,14 +273,100 @@ function TrendsChart({ data }: { data: TrendData }) {
           </div>
         </div>
       )}
-
       {data.yearData.length === 0 && data.topAssignees.length === 0 && (
         <div className="px-6 py-8 text-center">
-          <p className="text-sm text-white/40" style={{ fontFamily: "system-ui" }}>
-            No trend data found. Try a different keyword.
-          </p>
+          <p className="text-sm text-white/40" style={{ fontFamily: "system-ui" }}>No trend data found. Try a different keyword.</p>
         </div>
       )}
+    </motion.div>
+  );
+}
+
+function ComparisonView({ data }: { data: ComparisonData }) {
+  const { a, b } = data;
+  const aTotal = a.total;
+  const bTotal = b.total;
+  const aTopCompany = a.topAssignees[0];
+  const bTopCompany = b.topAssignees[0];
+  const aRecent = a.yearData.filter(d => parseInt(d.year) >= 2020).reduce((s, d) => s + d.count, 0);
+  const bRecent = b.yearData.filter(d => parseInt(d.year) >= 2020).reduce((s, d) => s + d.count, 0);
+  const aMaxYear = Math.max(...a.yearData.map(d => d.count), 1);
+  const bMaxYear = Math.max(...b.yearData.map(d => d.count), 1);
+
+  const StatRow = ({ label, aVal, bVal, aRaw, bRaw }: { label: string; aVal: string; bVal: string; aRaw: number; bRaw: number }) => (
+    <div className="py-3 border-b border-white/[0.06] last:border-0">
+      <p className="text-[10px] text-white/30 uppercase tracking-wider mb-2" style={{ fontFamily: "system-ui" }}>{label}</p>
+      <div className="flex items-center gap-3">
+        <span className="text-sm font-bold w-16 text-right truncate" style={{ color: aRaw >= bRaw ? "#c9a84c" : "rgba(255,255,255,0.5)", fontFamily: "system-ui" }}>{aVal}</span>
+        <div className="flex-1 flex flex-col gap-1">
+          <div className="h-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.06)" }}>
+            <motion.div initial={{ width: 0 }} animate={{ width: `${(aRaw / Math.max(aRaw, bRaw)) * 100}%` }} transition={{ duration: 0.6 }}
+              className="h-full rounded-full" style={{ background: "linear-gradient(to right, #c9a84c, #e8c97a)" }} />
+          </div>
+          <div className="h-1.5 rounded-full" style={{ background: "rgba(255,255,255,0.06)" }}>
+            <motion.div initial={{ width: 0 }} animate={{ width: `${(bRaw / Math.max(aRaw, bRaw)) * 100}%` }} transition={{ duration: 0.6 }}
+              className="h-full rounded-full" style={{ background: "linear-gradient(to right, #60a5fa, #93c5fd)" }} />
+          </div>
+        </div>
+        <span className="text-sm font-bold w-16 truncate" style={{ color: bRaw >= aRaw ? "#60a5fa" : "rgba(255,255,255,0.5)", fontFamily: "system-ui" }}>{bVal}</span>
+      </div>
+    </div>
+  );
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+      className="rounded-2xl overflow-hidden border border-white/10 bg-gradient-to-b from-white/5 to-white/[0.02]">
+
+      <div className="px-6 py-4 border-b border-white/10 flex items-center justify-center gap-4">
+        <span className="text-base font-bold capitalize" style={{ color: "#c9a84c", fontFamily: "Georgia, serif" }}>{a.query}</span>
+        <span className="text-xs px-2 py-0.5 rounded-full border border-white/10 text-white/30" style={{ fontFamily: "system-ui" }}>vs</span>
+        <span className="text-base font-bold capitalize" style={{ color: "#60a5fa", fontFamily: "Georgia, serif" }}>{b.query}</span>
+      </div>
+
+      <div className="px-6 py-2">
+        <StatRow label="Total Patents Found" aVal={aTotal.toString()} bVal={bTotal.toString()} aRaw={aTotal} bRaw={bTotal} />
+        <StatRow label="Recent Patents (2020+)" aVal={aRecent.toString()} bVal={bRecent.toString()} aRaw={aRecent} bRaw={bRecent} />
+        {aTopCompany && bTopCompany && (
+          <StatRow label="Top Holder Patents" aVal={`${aTopCompany.name} (${aTopCompany.count})`} bVal={`${bTopCompany.name} (${bTopCompany.count})`} aRaw={aTopCompany.count} bRaw={bTopCompany.count} />
+        )}
+      </div>
+
+      <div className="px-6 py-4 grid grid-cols-2 gap-4 border-t border-white/[0.06]">
+        {[{ d: a, color: "#c9a84c", max: aMaxYear }, { d: b, color: "#60a5fa", max: bMaxYear }].map(({ d, color, max }, si) => (
+          <div key={si}>
+            <p className="text-[10px] uppercase tracking-wider mb-2 capitalize" style={{ color, opacity: 0.7, fontFamily: "system-ui" }}>{d.query} — by year</p>
+            <div className="flex items-end gap-0.5" style={{ height: "64px" }}>
+              {d.yearData.map((yd, i) => (
+                <div key={yd.year} className="flex flex-col items-center flex-1">
+                  <motion.div
+                    initial={{ height: 0 }}
+                    animate={{ height: `${Math.max((yd.count / max) * 56, 2)}px` }}
+                    transition={{ delay: i * 0.03, duration: 0.4 }}
+                    className="w-full rounded-t-sm"
+                    style={{ background: color, opacity: 0.6 }}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="px-6 py-4 grid grid-cols-2 gap-4 border-t border-white/[0.06]">
+        {[{ d: a, color: "#c9a84c" }, { d: b, color: "#60a5fa" }].map(({ d, color }, si) => (
+          <div key={si}>
+            <p className="text-[10px] uppercase tracking-wider mb-2 capitalize" style={{ color, opacity: 0.7, fontFamily: "system-ui" }}>Top holders</p>
+            <div className="space-y-1">
+              {d.topAssignees.slice(0, 3).map(a => (
+                <div key={a.name} className="flex justify-between gap-2">
+                  <span className="text-[11px] truncate" style={{ color: "rgba(255,255,255,0.6)", fontFamily: "system-ui" }}>{a.name}</span>
+                  <span className="text-[11px] font-bold flex-shrink-0" style={{ color, fontFamily: "system-ui" }}>{a.count}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
     </motion.div>
   );
 }
@@ -311,8 +388,9 @@ function MessageContent({ content, mode }: { content: string; mode: Mode }) {
 export default function Home() {
   const [question, setQuestion] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
-  const [mode, setMode] = useState<Mode>("chat");
+  const [mode, setMode] = useState<Mode>("comparison");
   const [trendsData, setTrendsData] = useState<TrendData | null>(null);
+  const [comparisonData, setComparisonData] = useState<ComparisonData | null>(null);
   const [trendsLoading, setTrendsLoading] = useState(false);
   const patentContextRef = useRef<string>("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -329,12 +407,13 @@ export default function Home() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, askMutation.isPending, trendsData]);
+  }, [messages, askMutation.isPending, trendsData, comparisonData]);
 
   const handleModeChange = (newMode: Mode) => {
     setMode(newMode);
     setMessages([]);
     setTrendsData(null);
+    setComparisonData(null);
     patentContextRef.current = "";
     setQuestion("");
   };
@@ -353,12 +432,37 @@ export default function Home() {
     }
   };
 
+  const handleComparisonSubmit = async (query: string) => {
+    const parts = query.toLowerCase().split(/\s+vs\s+/);
+    if (parts.length < 2) return;
+    const [queryA, queryB] = parts;
+    setTrendsLoading(true);
+    setComparisonData(null);
+    try {
+      const [resA, resB] = await Promise.all([
+        fetch(`/api/trends?q=${encodeURIComponent(queryA)}`).then(r => r.json()),
+        fetch(`/api/trends?q=${encodeURIComponent(queryB)}`).then(r => r.json()),
+      ]);
+      setComparisonData({ a: resA, b: resB });
+    } catch {
+      setComparisonData(null);
+    } finally {
+      setTrendsLoading(false);
+    }
+  };
+
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!question.trim() || askMutation.isPending || trendsLoading) return;
 
     if (mode === "trends") {
       handleTrendsSubmit(question.trim());
+      setQuestion("");
+      return;
+    }
+
+    if (mode === "comparison") {
+      handleComparisonSubmit(question.trim());
       setQuestion("");
       return;
     }
@@ -396,16 +500,13 @@ export default function Home() {
       background: "linear-gradient(135deg, #0a0c10 0%, #0d1117 50%, #0a0e14 100%)",
       fontFamily: "'Georgia', 'Times New Roman', serif"
     }}>
-      {/* Subtle grid background */}
       <div className="fixed inset-0 pointer-events-none" style={{
         backgroundImage: "linear-gradient(rgba(201,168,76,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(201,168,76,0.03) 1px, transparent 1px)",
         backgroundSize: "60px 60px"
       }} />
 
-      {/* Header */}
       <header className="sticky top-0 z-50 border-b border-white/[0.06] px-4 py-4" style={{
-        background: "rgba(10,12,16,0.9)",
-        backdropFilter: "blur(20px)"
+        background: "rgba(10,12,16,0.9)", backdropFilter: "blur(20px)"
       }}>
         <div className="max-w-3xl mx-auto">
           <div className="flex items-center gap-3 mb-4">
@@ -423,9 +524,9 @@ export default function Home() {
                 Powered by Groq · USPTO Patents
               </p>
             </div>
-            {(messages.length > 0 || trendsData) && (
+            {(messages.length > 0 || trendsData || comparisonData) && (
               <button
-                onClick={() => { setMessages([]); setTrendsData(null); patentContextRef.current = ""; }}
+                onClick={() => { setMessages([]); setTrendsData(null); setComparisonData(null); patentContextRef.current = ""; }}
                 className="ml-auto text-xs transition-colors"
                 style={{ color: "rgba(255,255,255,0.3)", fontFamily: "system-ui" }}
                 onMouseEnter={e => (e.currentTarget.style.color = "rgba(255,255,255,0.7)")}
@@ -436,7 +537,6 @@ export default function Home() {
             )}
           </div>
 
-          {/* Mode tabs */}
           <div className="flex gap-1 overflow-x-auto pb-0.5" style={{ scrollbarWidth: "none" }}>
             {MODES.map((m) => {
               const Icon = m.icon;
@@ -463,11 +563,8 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Messages */}
       <main className="flex-1 w-full max-w-3xl mx-auto px-4 py-8 space-y-6">
-
-        {/* Empty state */}
-        {messages.length === 0 && !isLoading && !trendsData && (
+        {messages.length === 0 && !isLoading && !trendsData && !comparisonData && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -519,10 +616,9 @@ export default function Home() {
           </motion.div>
         )}
 
-        {/* Trends result */}
         {mode === "trends" && trendsData && <TrendsChart data={trendsData} />}
+        {mode === "comparison" && comparisonData && <ComparisonView data={comparisonData} />}
 
-        {/* Chat messages */}
         <AnimatePresence>
           {messages.map((msg, idx) => (
             <motion.div
@@ -540,7 +636,6 @@ export default function Home() {
                   <Sparkles className="w-3.5 h-3.5" style={{ color: "#c9a84c" }} />
                 </div>
               )}
-
               {msg.role === "assistant" ? (
                 <div className="max-w-[85%]" style={{ color: "rgba(255,255,255,0.85)", fontFamily: "system-ui, sans-serif" }}>
                   <MessageContent content={msg.content} mode={mode} />
@@ -556,7 +651,6 @@ export default function Home() {
                   {msg.content}
                 </div>
               )}
-
               {msg.role === "user" && (
                 <div className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center mt-1" style={{
                   background: "linear-gradient(135deg, #c9a84c, #a07830)"
@@ -568,7 +662,6 @@ export default function Home() {
           ))}
         </AnimatePresence>
 
-        {/* Loading */}
         {isLoading && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3 justify-start">
             <div className="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center" style={{
@@ -578,15 +671,12 @@ export default function Home() {
               <Sparkles className="w-3.5 h-3.5 animate-pulse" style={{ color: "#c9a84c" }} />
             </div>
             <div className="px-4 py-3 rounded-2xl rounded-tl-sm" style={{
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.08)"
+              background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)"
             }}>
               <div className="flex gap-1.5 items-center h-5">
                 {[0, 150, 300].map(delay => (
                   <div key={delay} className="w-1.5 h-1.5 rounded-full animate-bounce" style={{
-                    background: "#c9a84c",
-                    opacity: 0.6,
-                    animationDelay: `${delay}ms`
+                    background: "#c9a84c", opacity: 0.6, animationDelay: `${delay}ms`
                   }} />
                 ))}
               </div>
@@ -597,16 +687,13 @@ export default function Home() {
         <div ref={bottomRef} />
       </main>
 
-      {/* Input */}
       <div className="sticky bottom-0 px-4 py-4" style={{
-        background: "rgba(10,12,16,0.95)",
-        backdropFilter: "blur(20px)",
+        background: "rgba(10,12,16,0.95)", backdropFilter: "blur(20px)",
         borderTop: "1px solid rgba(255,255,255,0.06)"
       }}>
         <div className="max-w-3xl mx-auto">
           <div className="relative rounded-2xl overflow-hidden transition-all" style={{
-            background: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(255,255,255,0.1)",
+            background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)",
           }}>
             <textarea
               ref={inputRef}
@@ -615,10 +702,7 @@ export default function Home() {
               onKeyDown={handleKeyDown}
               placeholder={currentMode.placeholder}
               className="w-full bg-transparent px-5 py-4 text-sm focus:outline-none resize-none min-h-[56px] max-h-[200px]"
-              style={{
-                color: "rgba(255,255,255,0.85)",
-                fontFamily: "system-ui, sans-serif",
-              }}
+              style={{ color: "rgba(255,255,255,0.85)", fontFamily: "system-ui, sans-serif" }}
               disabled={isLoading}
               rows={1}
             />
