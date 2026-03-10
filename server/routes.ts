@@ -176,7 +176,18 @@ async function searchPatentTrends(query: string) {
       }
       const assignee = r.assignee || "Individual";
       if (assignee && assignee !== "Individual") {
-        const shortName = assignee.split(" ").slice(0, 2).join(" ");
+        // Normalize known foreign-language company names
+        const normalized: Record<string, string> = {
+          "엘지전자": "LG Electronics",
+          "삼성전자": "Samsung Electronics",
+          "삼성": "Samsung",
+          "화웨이": "Huawei",
+          "소니": "Sony",
+        };
+        let shortName = assignee.split(" ").slice(0, 2).join(" ");
+        for (const [foreign, english] of Object.entries(normalized)) {
+          if (assignee.includes(foreign)) { shortName = english; break; }
+        }
         assigneeCounts[shortName] = (assigneeCounts[shortName] || 0) + 1;
       }
     });
