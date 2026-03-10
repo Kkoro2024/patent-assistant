@@ -324,7 +324,6 @@ function ComparisonView({ data }: { data: ComparisonData }) {
       </div>
 
       <div className="px-6 py-2">
-        <StatRow label="Total Patents Found" aVal={aTotal.toString()} bVal={bTotal.toString()} aRaw={aTotal} bRaw={bTotal} />
         <StatRow label="Recent Patents (2020+)" aVal={aRecent.toString()} bVal={bRecent.toString()} aRaw={aRecent} bRaw={bRecent} />
         {aTopCompany && bTopCompany && (
           <StatRow label="Top Holder Patents" aVal={`${aTopCompany.name} (${aTopCompany.count})`} bVal={`${bTopCompany.name} (${bTopCompany.count})`} aRaw={aTopCompany.count} bRaw={bTopCompany.count} />
