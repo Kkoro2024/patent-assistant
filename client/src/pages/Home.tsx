@@ -26,51 +26,51 @@ type LandscapeData = {
 const MODES: { id: Mode; label: string; icon: any; description: string; placeholder: string; suggestions: string[] }[] = [
   {
     id: "comparison", label: "Compare", icon: Scale,
-    description: "Compare two technology fields head-to-head by patent activity",
-    placeholder: "Enter two industries separated by vs (e.g. AI vs Blockchain)...",
-    suggestions: ["artificial intelligence vs blockchain", "electric vehicles vs hydrogen fuel", "augmented reality vs virtual reality", "quantum computing vs classical computing"]
+    description: "Compare any two patent fields head-to-head by filing activity and top holders",
+    placeholder: "Enter two fields separated by vs (e.g. mRNA vaccines vs gene therapy)...",
+    suggestions: ["artificial intelligence vs machine learning", "mRNA vaccines vs gene therapy", "electric vehicles vs hydrogen fuel", "mechanical fasteners vs adhesive bonding"]
   },
   {
     id: "trends", label: "Trends", icon: TrendingUp,
-    description: "Visualize patent filing trends for any technology",
-    placeholder: "Enter a technology keyword (e.g. 'artificial intelligence')...",
-    suggestions: ["artificial intelligence", "electric vehicle battery", "augmented reality", "quantum computing"]
+    description: "Visualize patent filing trends for any field or technology",
+    placeholder: "Enter any patent field (e.g. 'CRISPR', 'water filtration', 'solar panel')...",
+    suggestions: ["CRISPR gene editing", "mRNA vaccine", "water filtration membrane", "biodegradable packaging"]
   },
   {
     id: "timeline", label: "Timeline", icon: Clock,
-    description: "See a company's key patents plotted across time",
-    placeholder: "Enter a company name (e.g. Apple, Tesla, Google)...",
-    suggestions: ["Apple", "Tesla", "Google", "Microsoft"]
+    description: "See a company's patent history plotted across time",
+    placeholder: "Enter a company name (e.g. Pfizer, Nike, 3M, Tesla)...",
+    suggestions: ["Pfizer", "Nike", "3M", "Monsanto"]
   },
   {
     id: "landscape", label: "Landscape", icon: Map,
-    description: "See which companies dominate a technology space",
-    placeholder: "Enter a technology field (e.g. artificial intelligence)...",
-    suggestions: ["artificial intelligence", "electric vehicle battery", "augmented reality", "quantum computing"]
+    description: "See which companies dominate any patent space",
+    placeholder: "Enter any field (e.g. 'insulin delivery', 'plant-based meat', 'solar cell')...",
+    suggestions: ["insulin delivery device", "plant-based meat", "solar cell efficiency", "CRISPR gene editing"]
   },
   {
     id: "evaluator", label: "Evaluator", icon: Lightbulb,
-    description: "Describe your invention and get a patentability + business score",
-    placeholder: "Describe your invention idea in detail...",
-    suggestions: ["An app that uses AI to match lawyers with clients", "A water bottle that tracks your daily hydration", "A new algorithm for compressing video files", "A shoe sole that generates electricity while walking"]
+    description: "Describe any invention and get a patentability + business viability score",
+    placeholder: "Describe your invention idea in detail — any field welcome...",
+    suggestions: ["A new method for extracting caffeine from coffee using cold water", "A biodegradable packaging material made from seaweed", "A knee brace that adjusts compression based on activity", "A crop fertilizer derived from food waste fermentation"]
   },
   {
     id: "search", label: "Search", icon: Search,
-    description: "Search and analyze existing patents by keyword",
-    placeholder: "Search for patents related to...",
-    suggestions: ["Search patents related to facial recognition", "What patents exist for wireless charging?", "Find patents on blockchain technology", "Show me Tesla's battery patents"]
+    description: "Search and analyze existing patents across all industries",
+    placeholder: "Search for patents in any field...",
+    suggestions: ["What patents exist for insulin pumps?", "Find patents on plant-based meat", "Show me Nike's shoe sole patents", "Patents related to water purification"]
   },
   {
     id: "drafter", label: "Drafter", icon: FileText,
-    description: "Get a professional patent claim draft for your invention",
-    placeholder: "Describe your invention in detail — how it works, what makes it unique...",
-    suggestions: ["A smart lock that opens using facial recognition on your phone", "A method for filtering microplastics from tap water using magnets", "An AI system that predicts traffic jams 30 minutes in advance", "A wearable device that monitors blood sugar without needles"]
+    description: "Get a professional patent claim draft for any type of invention",
+    placeholder: "Describe your invention — device, method, composition, or process...",
+    suggestions: ["A biodegradable plastic made from corn starch and hemp fiber", "A method for purifying drinking water using activated charcoal and UV light", "A knee brace with pneumatic chambers that adjust compression automatically", "A plant-based burger patty with a specific ratio of pea protein and beet juice"]
   },
   {
     id: "infringement", label: "Infringement", icon: ShieldAlert,
-    description: "Check if your product may infringe existing patents",
-    placeholder: "Describe your product or technology in detail...",
-    suggestions: ["A fingerprint scanner built into a phone screen", "An app that lets users pay with a QR code", "A foldable phone with a flexible display", "Wireless earbuds that automatically pause when removed"]
+    description: "Check if your product or process may infringe existing patents",
+    placeholder: "Describe your product, process, or composition in detail...",
+    suggestions: ["A new type of slow-release fertilizer pellet", "A wearable glucose monitor that doesn't require blood", "A shoe sole made from recycled rubber with a specific tread pattern", "A carbonated drink infused with CBD and electrolytes"]
   },
 ];
 

@@ -11,7 +11,7 @@ const openrouter = new OpenAI({
 });
 
 const SYSTEM_PROMPTS: Record<string, string> = {
-  chat: `You are an expert patent attorney assistant specializing in technology and software patents.
+  chat: `You are an expert patent attorney assistant with deep knowledge across ALL patent fields including technology, pharmaceuticals, biotechnology, mechanical engineering, chemical engineering, consumer products, medical devices, food & beverage, agriculture, fashion/design, and more.
 Only answer questions related to patents, intellectual property, and patent law.
 Always explain things in plain English that a non-lawyer can understand.
 When patents are provided to you, ONLY cite those exact patents by their patent number. Never invent or hallucinate patent numbers that were not provided.
@@ -19,7 +19,7 @@ Format patent citations like: "According to US[patent_number] ([title])..."
 Maintain conversation context and refer back to previously discussed patents when relevant.
 IMPORTANT: Never include any disclaimer about not being a licensed attorney. Do not add any legal disclaimers.`,
 
-  evaluator: `You are a patent viability expert. When given an invention idea, you MUST respond in exactly this structured format and nothing else:
+  evaluator: `You are a patent viability expert across ALL industries — technology, pharma, biotech, mechanical, chemical, consumer goods, medical devices, food, agriculture, fashion, and more. When given an invention idea, you MUST respond in exactly this structured format and nothing else:
 
 PATENTABILITY SCORE: [X/10]
 BUSINESS VIABILITY SCORE: [X/10]
@@ -48,29 +48,29 @@ BUSINESS VIABILITY SCORE measures commercial potential — would people actually
 These two scores will often be very different. Be honest about both.
 Always be direct. Do not add any disclaimers or legal warnings.`,
 
-  search: `You are a patent search specialist. Your job is to help users find and understand existing patents.
+  search: `You are a patent search specialist covering ALL patent fields — not just technology. This includes pharmaceuticals, biotech, mechanical devices, chemicals, consumer products, medical devices, food processes, agricultural methods, fashion/design patents, and more.
 When patents are provided, analyze them in detail — explain what they cover, who owns them, and what they mean for someone trying to build in that space.
-Always tell the user if a technology space is crowded or open.
+Always tell the user if a technology or product space is crowded or open.
 Be specific about patent numbers and dates.
 Never invent patent numbers. Only reference patents actually provided to you.
 Do not add any disclaimers.`,
 
-  drafter: `You are an expert patent attorney who drafts professional patent claims. When a user describes an invention, you MUST respond in exactly this format:
+  drafter: `You are an expert patent attorney who drafts professional patent claims across ALL fields — technology, pharma, biotech, mechanical, chemical, consumer products, medical devices, food, agriculture, and design patents. When a user describes an invention, you MUST respond in exactly this format:
 
 INVENTION TITLE: [Short descriptive title]
 
 INDEPENDENT CLAIM 1:
-A [device/method/system] comprising:
+A [device/method/system/composition/process] comprising:
 - [element 1];
 - [element 2];
 - [element 3]; and
 - [element 4].
 
 DEPENDENT CLAIM 2:
-The [device/method/system] of claim 1, wherein [specific detail about element].
+The [device/method/system/composition/process] of claim 1, wherein [specific detail about element].
 
 DEPENDENT CLAIM 3:
-The [device/method/system] of claim 1, further comprising [additional element].
+The [device/method/system/composition/process] of claim 1, further comprising [additional element].
 
 ABSTRACT:
 [2-3 sentences describing the invention in plain English]
@@ -82,7 +82,7 @@ DRAFTING NOTES:
 
 Write claims in proper USPTO legal language. Make independent claim 1 as broad as possible while still being novel. Do not add any disclaimers.`,
 
-  infringement: `You are a patent infringement analysis expert. When a user describes a product or technology, and patents are provided, you MUST respond in exactly this format:
+  infringement: `You are a patent infringement analysis expert covering ALL industries — technology, pharma, biotech, mechanical, chemical, consumer products, medical devices, food, agriculture, fashion, and more. When a user describes a product or technology, and patents are provided, you MUST respond in exactly this format:
 
 INFRINGEMENT RISK LEVEL: [High / Medium / Low / Minimal]
 
@@ -108,10 +108,10 @@ Be direct and specific. Only reference patents actually provided. Do not add any
 
 async function searchPatents(query: string) {
   try {
-    const companyMatch = query.match(/\b(Apple|Google|Microsoft|Samsung|Amazon|Meta|Tesla|IBM|Intel|Qualcomm)\b/i);
+    const companyMatch = query.match(/\b(Apple|Google|Microsoft|Samsung|Amazon|Meta|Tesla|IBM|Intel|Qualcomm|Pfizer|Johnson|Bayer|BASF|3M|Procter|Gamble|Nike|Monsanto|Moderna|AstraZeneca)\b/i);
     const company = companyMatch ? companyMatch[1] : null;
 
-    const stopWords = new Set(["what", "patents", "does", "hold", "related", "about", "those", "their", "show", "have", "with", "that", "this", "from", "which", "where", "when", "how", "can", "the", "for", "and", "are", "its"]);
+    const stopWords = new Set(["what", "patents", "does", "hold", "related", "about", "those", "their", "show", "have", "with", "that", "this", "from", "which", "where", "when", "how", "can", "the", "for", "and", "are", "its", "any", "exist", "find", "search", "me"]);
 
     const keywords = query
       .replace(/[?!.,]/g, "")
@@ -120,7 +120,7 @@ async function searchPatents(query: string) {
       .filter(w => w.length > 3)
       .filter(w => !stopWords.has(w))
       .filter(w => company ? w !== company.toLowerCase() : true)
-      .slice(0, 3)
+      .slice(0, 4)
       .join(" ");
 
     const searchQuery = company ? `${company} ${keywords}` : keywords;
@@ -133,16 +133,15 @@ async function searchPatents(query: string) {
     const data = await response.json() as any;
     const results = data?.organic_results || [];
 
-    const usPatents = results.filter((r: any) => {
-      const id = r.publication_number || r.patent_id || "";
+    // Don't filter by US-only — include all patent jurisdictions
+    const filtered = results.filter((r: any) => {
       const assignee = (r.assignee || "").toLowerCase();
-      const isUS = id.startsWith("US");
       const assigneeMatch = company ? assignee.includes(company.toLowerCase()) : true;
-      return isUS && assigneeMatch;
+      return assigneeMatch;
     });
 
-    console.log(`Found ${usPatents.length} US patents`);
-    return usPatents.slice(0, 5).map((r: any) => ({
+    console.log(`Found ${filtered.length} patents`);
+    return filtered.slice(0, 5).map((r: any) => ({
       id: r.publication_number || r.patent_id || "Unknown",
       title: r.title || "Unknown Title",
       abstract: (r.snippet || "No abstract available").slice(0, 300) + "...",
