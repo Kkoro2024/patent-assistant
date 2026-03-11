@@ -25,52 +25,52 @@ type LandscapeData = {
 
 const MODES: { id: Mode; label: string; icon: any; description: string; placeholder: string; suggestions: string[] }[] = [
   {
-    id: "comparison", label: "Compare Industries", icon: Scale,
+    id: "comparison", label: "Compare", icon: Scale,
     description: "Compare two technology fields head-to-head by patent activity",
     placeholder: "Enter two industries separated by vs (e.g. AI vs Blockchain)...",
     suggestions: ["artificial intelligence vs blockchain", "electric vehicles vs hydrogen fuel", "augmented reality vs virtual reality", "quantum computing vs classical computing"]
-  },
-  {
-    id: "timeline", label: "Patent Timeline", icon: Clock,
-    description: "See a company's key patents plotted across time",
-    placeholder: "Enter a company name (e.g. Apple, Tesla, Google)...",
-    suggestions: ["Apple", "Tesla", "Google", "Microsoft"]
-  },
-  {
-    id: "landscape", label: "Landscape Map", icon: Map,
-    description: "See which companies dominate a technology space",
-    placeholder: "Enter a technology field (e.g. artificial intelligence)...",
-    suggestions: ["artificial intelligence", "electric vehicle battery", "augmented reality", "quantum computing"]
-  },
-  {
-    id: "evaluator", label: "Idea Evaluator", icon: Lightbulb,
-    description: "Describe your invention and get a patentability + business score",
-    placeholder: "Describe your invention idea in detail...",
-    suggestions: ["An app that uses AI to match lawyers with clients", "A water bottle that tracks your daily hydration", "A new algorithm for compressing video files", "A shoe sole that generates electricity while walking"]
-  },
-  {
-    id: "search", label: "Patent Search", icon: Search,
-    description: "Search and analyze existing patents by keyword",
-    placeholder: "Search for patents related to...",
-    suggestions: ["Search patents related to facial recognition", "What patents exist for wireless charging?", "Find patents on blockchain technology", "Show me Tesla's battery patents"]
-  },
-  {
-    id: "drafter", label: "Patent Drafter", icon: FileText,
-    description: "Get a professional patent claim draft for your invention",
-    placeholder: "Describe your invention in detail — how it works, what makes it unique...",
-    suggestions: ["A smart lock that opens using facial recognition on your phone", "A method for filtering microplastics from tap water using magnets", "An AI system that predicts traffic jams 30 minutes in advance", "A wearable device that monitors blood sugar without needles"]
-  },
-  {
-    id: "infringement", label: "Infringement Check", icon: ShieldAlert,
-    description: "Check if your product may infringe existing patents",
-    placeholder: "Describe your product or technology in detail...",
-    suggestions: ["A fingerprint scanner built into a phone screen", "An app that lets users pay with a QR code", "A foldable phone with a flexible display", "Wireless earbuds that automatically pause when removed"]
   },
   {
     id: "trends", label: "Trends", icon: TrendingUp,
     description: "Visualize patent filing trends for any technology",
     placeholder: "Enter a technology keyword (e.g. 'artificial intelligence')...",
     suggestions: ["artificial intelligence", "electric vehicle battery", "augmented reality", "quantum computing"]
+  },
+  {
+    id: "timeline", label: "Timeline", icon: Clock,
+    description: "See a company's key patents plotted across time",
+    placeholder: "Enter a company name (e.g. Apple, Tesla, Google)...",
+    suggestions: ["Apple", "Tesla", "Google", "Microsoft"]
+  },
+  {
+    id: "landscape", label: "Landscape", icon: Map,
+    description: "See which companies dominate a technology space",
+    placeholder: "Enter a technology field (e.g. artificial intelligence)...",
+    suggestions: ["artificial intelligence", "electric vehicle battery", "augmented reality", "quantum computing"]
+  },
+  {
+    id: "evaluator", label: "Evaluator", icon: Lightbulb,
+    description: "Describe your invention and get a patentability + business score",
+    placeholder: "Describe your invention idea in detail...",
+    suggestions: ["An app that uses AI to match lawyers with clients", "A water bottle that tracks your daily hydration", "A new algorithm for compressing video files", "A shoe sole that generates electricity while walking"]
+  },
+  {
+    id: "search", label: "Search", icon: Search,
+    description: "Search and analyze existing patents by keyword",
+    placeholder: "Search for patents related to...",
+    suggestions: ["Search patents related to facial recognition", "What patents exist for wireless charging?", "Find patents on blockchain technology", "Show me Tesla's battery patents"]
+  },
+  {
+    id: "drafter", label: "Drafter", icon: FileText,
+    description: "Get a professional patent claim draft for your invention",
+    placeholder: "Describe your invention in detail — how it works, what makes it unique...",
+    suggestions: ["A smart lock that opens using facial recognition on your phone", "A method for filtering microplastics from tap water using magnets", "An AI system that predicts traffic jams 30 minutes in advance", "A wearable device that monitors blood sugar without needles"]
+  },
+  {
+    id: "infringement", label: "Infringement", icon: ShieldAlert,
+    description: "Check if your product may infringe existing patents",
+    placeholder: "Describe your product or technology in detail...",
+    suggestions: ["A fingerprint scanner built into a phone screen", "An app that lets users pay with a QR code", "A foldable phone with a flexible display", "Wireless earbuds that automatically pause when removed"]
   },
 ];
 
