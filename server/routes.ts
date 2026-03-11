@@ -32,13 +32,13 @@ COMMERCIAL POTENTIAL: [High / Medium / Low]
 VERDICT: [1-2 sentence plain English summary of whether this is worth pursuing as a patent AND as a business]
 
 STRENGTHS:
-• [strength 1]
-• [strength 2]
-• [strength 3]
+- [strength 1]
+- [strength 2]
+- [strength 3]
 
 WEAKNESSES:
-• [weakness 1]
-• [weakness 2]
+- [weakness 1]
+- [weakness 2]
 
 RECOMMENDATION:
 [2-3 sentences on what the inventor should do next]
@@ -61,10 +61,10 @@ INVENTION TITLE: [Short descriptive title]
 
 INDEPENDENT CLAIM 1:
 A [device/method/system] comprising:
-• [element 1];
-• [element 2];
-• [element 3]; and
-• [element 4].
+- [element 1];
+- [element 2];
+- [element 3]; and
+- [element 4].
 
 DEPENDENT CLAIM 2:
 The [device/method/system] of claim 1, wherein [specific detail about element].
@@ -76,9 +76,9 @@ ABSTRACT:
 [2-3 sentences describing the invention in plain English]
 
 DRAFTING NOTES:
-• [Important note about claim scope]
-• [Suggestion to strengthen the patent]
-• [Any potential weaknesses to address]
+- [Important note about claim scope]
+- [Suggestion to strengthen the patent]
+- [Any potential weaknesses to address]
 
 Write claims in proper USPTO legal language. Make independent claim 1 as broad as possible while still being novel. Do not add any disclaimers.`,
 
@@ -91,14 +91,14 @@ OVERALL ASSESSMENT:
 
 PATENT ANALYSIS:
 For each patent provided, analyze:
-• Patent [number]: [LIKELY INFRINGED / POSSIBLY INFRINGED / UNLIKELY INFRINGED]
+- Patent [number]: [LIKELY INFRINGED / POSSIBLY INFRINGED / UNLIKELY INFRINGED]
   - Reason: [Brief explanation of why or why not]
   - Claims at risk: [Which claims could be problematic]
 
 SAFE HARBOR SUGGESTIONS:
-• [How to modify the product to avoid infringement 1]
-• [How to modify the product to avoid infringement 2]
-• [How to modify the product to avoid infringement 3]
+- [How to modify the product to avoid infringement 1]
+- [How to modify the product to avoid infringement 2]
+- [How to modify the product to avoid infringement 3]
 
 RECOMMENDED NEXT STEPS:
 [2-3 sentences on what to do based on the risk level]
@@ -176,7 +176,6 @@ async function searchPatentTrends(query: string) {
       }
       const assignee = r.assignee || "Individual";
       if (assignee && assignee !== "Individual") {
-        // Normalize known foreign-language company names
         const normalized: Record<string, string> = {
           "엘지전자": "LG Electronics",
           "삼성전자": "Samsung Electronics",
@@ -208,6 +207,98 @@ async function searchPatentTrends(query: string) {
   }
 }
 
+async function fetchPatentTimeline(company: string) {
+  try {
+    const response = await fetch(
+      `https://serpapi.com/search.json?engine=google_patents&q=${encodeURIComponent(company)}&api_key=${process.env.SERPAPI_KEY}&num=100&hl=en`,
+      { headers: { "Accept": "application/json" } }
+    );
+    const data = await response.json() as any;
+    const results = data?.organic_results || [];
+
+    const patents = results
+      .filter((r: any) => {
+        const id = r.publication_number || r.patent_id || "";
+        const assignee = (r.assignee || "").toLowerCase();
+        return id.startsWith("US") && assignee.includes(company.toLowerCase());
+      })
+      .map((r: any) => ({
+        id: r.publication_number || r.patent_id || "Unknown",
+        title: r.title || "Unknown Title",
+        inventor: r.inventor || "Unknown",
+        assignee: r.assignee || company,
+        date: r.grant_date || r.publication_date || "",
+        abstract: (r.snippet || "").slice(0, 150) + "...",
+      }))
+      .filter((p: any) => p.date)
+      .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    return { company, patents };
+  } catch (err) {
+    console.error("Timeline fetch error:", err);
+    return { company, patents: [] };
+  }
+}
+
+async function fetchPatentLandscape(query: string) {
+  try {
+    const response = await fetch(
+      `https://serpapi.com/search.json?engine=google_patents&q=${encodeURIComponent(query)}&api_key=${process.env.SERPAPI_KEY}&num=100&hl=en`,
+      { headers: { "Accept": "application/json" } }
+    );
+    const data = await response.json() as any;
+    const results = data?.organic_results || [];
+
+    const assigneeCounts: Record<string, number> = {};
+    const assigneeYears: Record<string, number[]> = {};
+
+    results.forEach((r: any) => {
+      const id = r.publication_number || r.patent_id || "";
+      if (!id.startsWith("US")) return;
+
+      const assignee = r.assignee || "Individual";
+      if (!assignee || assignee === "Individual") return;
+
+      const normalized: Record<string, string> = {
+        "엘지전자": "LG Electronics",
+        "삼성전자": "Samsung Electronics",
+        "삼성": "Samsung",
+        "화웨이": "Huawei",
+        "소니": "Sony",
+      };
+      let shortName = assignee.split(" ").slice(0, 3).join(" ");
+      for (const [foreign, english] of Object.entries(normalized)) {
+        if (assignee.includes(foreign)) { shortName = english; break; }
+      }
+
+      assigneeCounts[shortName] = (assigneeCounts[shortName] || 0) + 1;
+
+      const date = r.grant_date || r.publication_date || "";
+      const year = date.match(/\d{4}/)?.[0];
+      if (year) {
+        if (!assigneeYears[shortName]) assigneeYears[shortName] = [];
+        assigneeYears[shortName].push(parseInt(year));
+      }
+    });
+
+    const bubbles = Object.entries(assigneeCounts)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 12)
+      .map(([name, count], i) => {
+        const years = assigneeYears[name] || [];
+        const avgYear = years.length > 0
+          ? Math.round(years.reduce((a, b) => a + b, 0) / years.length)
+          : 2018;
+        return { name, count, avgYear, rank: i };
+      });
+
+    return { query, total: results.length, bubbles };
+  } catch (err) {
+    console.error("Landscape fetch error:", err);
+    return { query, total: 0, bubbles: [] };
+  }
+}
+
 export async function registerRoutes(
   httpServer: Server,
   app: Express
@@ -218,12 +309,25 @@ export async function registerRoutes(
     res.json(qnas);
   });
 
-  // Trends endpoint
   app.get("/api/trends", async (req, res) => {
     const query = (req.query.q as string) || "";
     if (!query.trim()) return res.status(400).json({ message: "Query required" });
     const trends = await searchPatentTrends(query);
     res.json(trends);
+  });
+
+  app.get("/api/timeline", async (req, res) => {
+    const company = (req.query.company as string) || "";
+    if (!company.trim()) return res.status(400).json({ message: "Company required" });
+    const timeline = await fetchPatentTimeline(company);
+    res.json(timeline);
+  });
+
+  app.get("/api/landscape", async (req, res) => {
+    const query = (req.query.q as string) || "";
+    if (!query.trim()) return res.status(400).json({ message: "Query required" });
+    const landscape = await fetchPatentLandscape(query);
+    res.json(landscape);
   });
 
   app.post(api.qna.ask.path, async (req, res) => {
@@ -233,7 +337,6 @@ export async function registerRoutes(
       const existingPatentContext: string = req.body.patentContext || "";
       const mode: string = req.body.mode || "chat";
 
-      // Search patents for chat, search, and infringement modes on first message
       let patentContext = existingPatentContext;
       if (history.length === 0 && mode !== "evaluator" && mode !== "drafter") {
         const patents = await searchPatents(input.question);
